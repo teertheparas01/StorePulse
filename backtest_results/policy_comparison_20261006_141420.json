@@ -1,0 +1,58 @@
+{
+  "forecast_calibrated_95": {
+    "total_cost": 565044.2971720919,
+    "stockout_cost": 1716.3637805115673,
+    "holding_cost": 20767.93339158043,
+    "ordering_cost": 542560.0,
+    "service_level": 0.8587936009451611,
+    "fill_rate": 0.8587936009451611,
+    "stockout_rate": 0.006819522264818637,
+    "order_rate": 0.404452963727514,
+    "avg_cost_per_period": 10.414411257226702,
+    "total_demand": 2431.0,
+    "total_stockout_qty": 343.27275610231345,
+    "avg_ending_inv": 0.7655534278819092
+  },
+  "forecast_calibrated_90": {
+    "total_cost": 565066.8571414634,
+    "stockout_cost": 1772.859839022144,
+    "holding_cost": 20733.9973024413,
+    "ordering_cost": 542560.0,
+    "service_level": 0.8541456323305517,
+    "fill_rate": 0.8541456323305517,
+    "stockout_rate": 0.009528900029489825,
+    "order_rate": 0.4018173105278679,
+    "avg_cost_per_period": 10.414827063208925,
+    "total_demand": 2431.0,
+    "total_stockout_qty": 354.57196780442877,
+    "avg_ending_inv": 0.7643024661766921
+  },
+  "forecast_calibrated_80": {
+    "total_cost": 565126.9946064841,
+    "stockout_cost": 1895.2231926280776,
+    "holding_cost": 20671.77141385598,
+    "ordering_cost": 542560.0,
+    "service_level": 0.8440787171840332,
+    "fill_rate": 0.8440787171840332,
+    "stockout_rate": 0.009639486877027426,
+    "order_rate": 0.40314435269831905,
+    "avg_cost_per_period": 10.415935465321514,
+    "total_demand": 2431.0,
+    "total_stockout_qty": 379.0446385256155,
+    "avg_ending_inv": 0.7620086778920665
+  },
+  "baseline_reorder_point": {
+    "total_cost": 363812.8035714285,
+    "stockout_cost": 41.49999999999977,
+    "holding_cost": 21721.303571428572,
+    "ordering_cost": 342050.0,
+    "service_level": 0.9965857671740025,
+    "fill_rate": 0.9965857671740024,
+    "stockout_rate": 0.0004976408139191979,
+    "order_rate": 0.6173326452373931,
+    "avg_cost_per_period": 6.7054851734633685,
+    "total_demand": 2431.0,
+    "total_stockout_qty": 8.299999999999955,
+    "avg_ending_inv": 0.8006968287904959
+  }
+}

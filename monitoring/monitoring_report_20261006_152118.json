@@ -1,0 +1,332 @@
+{
+  "timestamp": "2026-10-06T09:51:18.258795",
+  "feature_drift": {
+    "product_division": {
+      "psi": 0.04116844275848115,
+      "drift_detected": false
+    },
+    "product_category": {
+      "psi": 0.32869782912001166,
+      "drift_detected": true
+    },
+    "product_subcategory": {
+      "psi": 0.8095861224166903,
+      "drift_detected": true
+    },
+    "product_segment": {
+      "psi": 4.608619170240399,
+      "drift_detected": true
+    },
+    "supplier": {
+      "psi": 0.5804940412101447,
+      "drift_detected": true
+    },
+    "net_qty_sold": {
+      "psi": 0.003942725832209493,
+      "drift_detected": false
+    },
+    "sales_amount": {
+      "psi": 3.614149454696671e-06,
+      "drift_detected": false
+    },
+    "return_qty": {
+      "psi": 0.004742748550914622,
+      "drift_detected": false
+    },
+    "return_amount": {
+      "psi": 3.1075438251652356e-07,
+      "drift_detected": false
+    },
+    "unit_price": {
+      "psi": 0.3337360318993845,
+      "drift_detected": true
+    },
+    "unit_cost": {
+      "psi": 0.17184804753045974,
+      "drift_detected": false
+    },
+    "is_promo": {
+      "psi": 0.0006138732085655186,
+      "drift_detected": false
+    },
+    "is_markdown": {
+      "psi": 0.00178698392243,
+      "drift_detected": false
+    },
+    "is_clearance": {
+      "psi": 0.0038146421907918585,
+      "drift_detected": false
+    },
+    "qty_sold": {
+      "psi": 0.004568758612954341,
+      "drift_detected": false
+    },
+    "cogs": {
+      "psi": 1.6089108597832173e-06,
+      "drift_detected": false
+    },
+    "transaction_count": {
+      "psi": 0.003764423079314549,
+      "drift_detected": false
+    },
+    "qty_on_hand": {
+      "psi": 0.031243029513998304,
+      "drift_detected": false
+    },
+    "stock_status": {
+      "psi": 0.28319967573680127,
+      "drift_detected": true
+    },
+    "stock_unit_selling_price": {
+      "psi": 0.026979690956162258,
+      "drift_detected": false
+    },
+    "stock_unit_cost_price": {
+      "psi": 0.020326761344325248,
+      "drift_detected": false
+    },
+    "negative_qty_flag": {
+      "psi": 0.0016031090544244046,
+      "drift_detected": false
+    },
+    "writeoff_flag": {
+      "psi": 0.0009985644883059163,
+      "drift_detected": false
+    },
+    "gap_flag": {
+      "psi": 0.08094110555008062,
+      "drift_detected": false
+    },
+    "observed_flag": {
+      "psi": 0.0,
+      "drift_detected": false
+    },
+    "sales_lag_1": {
+      "psi": 0.0033907263833035206,
+      "drift_detected": false
+    },
+    "sales_lag_7": {
+      "psi": 0.01033371965840866,
+      "drift_detected": false
+    },
+    "sales_lag_14": {
+      "psi": 0.012707153210273391,
+      "drift_detected": false
+    },
+    "sales_lag_28": {
+      "psi": 0.0029702531781541424,
+      "drift_detected": false
+    },
+    "sales_rolling_mean_7": {
+      "psi": 0.06125464424013531,
+      "drift_detected": false
+    },
+    "sales_rolling_std_7": {
+      "psi": 0.028522408484687498,
+      "drift_detected": false
+    },
+    "sales_rolling_sum_7": {
+      "psi": 0.008401407814368362,
+      "drift_detected": false
+    },
+    "sales_rolling_mean_14": {
+      "psi": 0.16424375456730236,
+      "drift_detected": false
+    },
+    "sales_rolling_std_14": {
+      "psi": 0.1040539203302706,
+      "drift_detected": false
+    },
+    "sales_rolling_sum_14": {
+      "psi": 0.011003944268389357,
+      "drift_detected": false
+    },
+    "sales_rolling_mean_28": {
+      "psi": 0.5815228363519667,
+      "drift_detected": true
+    },
+    "sales_rolling_std_28": {
+      "psi": 0.2646099537192504,
+      "drift_detected": true
+    },
+    "sales_rolling_sum_28": {
+      "psi": 0.019708204076989505,
+      "drift_detected": false
+    },
+    "sales_zero_streak": {
+      "psi": 0.023805875323928027,
+      "drift_detected": false
+    },
+    "sales_cv_28": {
+      "psi": 0.1257323708565514,
+      "drift_detected": false
+    },
+    "is_promo_lag_7": {
+      "psi": 0.0006482363455313731,
+      "drift_detected": false
+    },
+    "is_promo_days_last_28": {
+      "psi": 0.05063283784477303,
+      "drift_detected": false
+    },
+    "is_markdown_lag_7": {
+      "psi": 0.0009376770266171904,
+      "drift_detected": false
+    },
+    "is_markdown_days_last_28": {
+      "psi": 0.06256725928783075,
+      "drift_detected": false
+    },
+    "is_clearance_lag_7": {
+      "psi": 0.0,
+      "drift_detected": false
+    },
+    "is_clearance_days_last_28": {
+      "psi": 0.006148163868124213,
+      "drift_detected": false
+    },
+    "unit_price_lag_1": {
+      "psi": 0.44427105026385355,
+      "drift_detected": true
+    },
+    "unit_price_rolling_mean_7": {
+      "psi": 0.11448178105056642,
+      "drift_detected": false
+    },
+    "price_change_pct_7": {
+      "psi": NaN,
+      "drift_detected": false
+    },
+    "inv_weeks_of_supply": {
+      "psi": 0.16477799473108695,
+      "drift_detected": false
+    },
+    "inv_days_since_receipt": {
+      "psi": NaN,
+      "drift_detected": false
+    },
+    "inv_gap_days_since_obs": {
+      "psi": 0.0,
+      "drift_detected": false
+    },
+    "inv_cost_retail_ratio": {
+      "psi": 1.5950914540630559,
+      "drift_detected": true
+    },
+    "inv_stock_status_encoded": {
+      "psi": 1.415998378684006,
+      "drift_detected": true
+    },
+    "day_of_week": {
+      "psi": 0.0031712780856855325,
+      "drift_detected": false
+    },
+    "day_of_month": {
+      "psi": 0.03532930163652375,
+      "drift_detected": false
+    },
+    "week_of_year": {
+      "psi": 21.960754377931334,
+      "drift_detected": true
+    },
+    "month": {
+      "psi": NaN,
+      "drift_detected": false
+    },
+    "quarter": {
+      "psi": 193.5781146075845,
+      "drift_detected": true
+    },
+    "is_weekend": {
+      "psi": 0.002466824641549446,
+      "drift_detected": false
+    },
+    "is_month_start": {
+      "psi": 0.1502056072392703,
+      "drift_detected": false
+    },
+    "is_month_end": {
+      "psi": 0.5145653921326395,
+      "drift_detected": true
+    },
+    "store_avg_daily_sales_28": {
+      "psi": 4.430623515661832,
+      "drift_detected": true
+    },
+    "store_product_rank": {
+      "psi": 0.010874103980186869,
+      "drift_detected": false
+    },
+    "_summary": {
+      "max_psi": 193.5781146075845,
+      "features_above_threshold": 15,
+      "total_features": 64,
+      "alerts": [
+        "Feature drift: product_category (PSI=0.3287)",
+        "Feature drift: product_subcategory (PSI=0.8096)",
+        "Feature drift: product_segment (PSI=4.6086)",
+        "Feature drift: supplier (PSI=0.5805)",
+        "Feature drift: unit_price (PSI=0.3337)",
+        "Feature drift: stock_status (PSI=0.2832)",
+        "Feature drift: sales_rolling_mean_28 (PSI=0.5815)",
+        "Feature drift: sales_rolling_std_28 (PSI=0.2646)",
+        "Feature drift: unit_price_lag_1 (PSI=0.4443)",
+        "Feature drift: inv_cost_retail_ratio (PSI=1.5951)",
+        "Feature drift: inv_stock_status_encoded (PSI=1.4160)",
+        "Feature drift: week_of_year (PSI=21.9608)",
+        "Feature drift: quarter (PSI=193.5781)",
+        "Feature drift: is_month_end (PSI=0.5146)",
+        "Feature drift: store_avg_daily_sales_28 (PSI=4.4306)"
+      ]
+    }
+  },
+  "prediction_drift": {
+    "hurdle_10": {
+      "mean": 0.032,
+      "std": 0.17608806605504818,
+      "ks_statistic": 0.5477,
+      "p_value": 1.6718195968811623e-254,
+      "drift_detected": "True"
+    },
+    "hurdle_50": {
+      "mean": 0.03204297475816896,
+      "std": 0.17632962386132403,
+      "ks_statistic": 0.5477,
+      "p_value": 1.6718195968811623e-254,
+      "drift_detected": "True"
+    },
+    "hurdle_90": {
+      "mean": 0.054251269779125616,
+      "std": 0.310224823285216,
+      "ks_statistic": 0.5477,
+      "p_value": 1.6718195968811623e-254,
+      "drift_detected": "True"
+    }
+  },
+  "performance": {
+    "hurdle_10": {
+      "rmse": 0.29832867780352595,
+      "mae": 0.057,
+      "asymmetric_cost": 0.906,
+      "performance_ok": "True"
+    },
+    "hurdle_50": {
+      "rmse": 0.29847578854268497,
+      "mae": 0.05704297475816896,
+      "asymmetric_cost": 0.9060214873790844,
+      "performance_ok": "True"
+    },
+    "hurdle_90": {
+      "rmse": 0.32843344979837086,
+      "mae": 0.07042063992235238,
+      "asymmetric_cost": 0.826611678857637,
+      "performance_ok": "True"
+    }
+  },
+  "summary": {
+    "feature_drift_detected": true,
+    "max_feature_psi": 193.5781146075845,
+    "prediction_drift_detected": true,
+    "performance_degraded": false
+  }
+}

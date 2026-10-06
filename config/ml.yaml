@@ -1,0 +1,112 @@
+# ML Training Configuration
+# All environment-specific params here, not hardcoded
+
+experiment:
+  name: "demand_forecasting"
+  artifact_location: "models/mlruns"
+
+data:
+  features_path: "data/processed/features/demand_forecasting_features.parquet"
+  target_col: "target_demand_7d"
+  # Columns to exclude from features
+  exclude_cols:
+    - "date"
+    - "store"
+    - "product_no"
+    - "product_description"
+    - "sales_type"
+    - "target_demand_7d"
+    - "target_demand_14d"
+    - "target_demand_28d"
+    - "target_zero_demand_7d"
+    - "target_zero_demand_14d"
+    - "target_zero_demand_28d"
+    - "target_stockout_risk_7d"
+    - "target_stockout_risk_14d"
+    - "target_stockout_risk_28d"
+    - "target_any_demand_7d"
+    - "target_any_demand_14d"
+    - "target_any_demand_28d"
+  # Filter out sentinel target values
+  filter_target_ge: 0
+
+split:
+  # Time-based split: train on earlier dates, validate on later
+  test_start_date: "2026-01-01"  # Last ~3 months for test
+  val_start_date: "2025-11-01"   # Nov-Dec for validation
+  # Alternative: use last N days per store-product
+  # use_last_n_days: 90
+
+model:
+  type: "lightgbm"
+  quantiles: [0.1, 0.5, 0.9]
+  params:
+    objective: "quantile"
+    alpha: 0.5
+    metric: "quantile"
+    boosting_type: "gbdt"
+    num_leaves: 127
+    max_depth: 8
+    learning_rate: 0.05
+    n_estimators: 2000
+    min_child_samples: 50
+    subsample: 0.8
+    colsample_bytree: 0.8
+    reg_alpha: 0.1
+    reg_lambda: 0.1
+    random_state: 42
+    verbosity: -1
+    n_jobs: -1
+  early_stopping_rounds: 100
+  categorical_features:
+    - "product_division"
+    - "product_category"
+    - "product_subcategory"
+    - "product_segment"
+    - "supplier"
+    - "store"
+    - "stock_status"
+    - "sales_type"
+    - "day_of_week"
+    - "month"
+    - "quarter"
+    - "is_weekend"
+    - "is_month_start"
+    - "is_month_end"
+
+training:
+  # Sample for faster iteration (set to 1.0 for full)
+  sample_frac: 1.0
+  sample_random_state: 42
+
+loss:
+  # Cost-aware asymmetric loss
+  stockout_cost_per_unit: 20.0
+  holding_cost_per_unit_per_period: 0.5
+  # For binary classifier
+  false_negative_cost: 20.0  # Cost of missing demand
+  false_positive_cost: 1.0   # Cost of unnecessary order
+  # Handle class imbalance (mostly zeros)
+  # Use sample_weight or focal loss alternative
+
+mlflow:
+  tracking_uri: "sqlite:///models/mlflow.db"
+  model_name: "demand_forecaster"
+  log_models: true
+  log_input_examples: true
+  registered_model_tags:
+    domain: "retail"
+    task: "demand_forecasting"
+    horizon: "7d"
+
+evaluation:
+  metrics: ["rmse", "mae", "mape", "r2", "poisson_deviance"]
+  # Per-store-product evaluation
+  groupby_eval: ["store", "product_no"]
+  # Business metrics
+  top_k_accuracy_k: [1, 5, 10]
+
+monitoring:
+  drift_check_features: "all"
+  psi_threshold: 0.2
+  performance_threshold_rmse: 1.0

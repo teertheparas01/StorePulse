@@ -1,0 +1,54 @@
+{
+  "conservative": {
+    "total_cost": 167436296.77040395,
+    "stockout_cost": 167393958.71825224,
+    "holding_cost": 2333.0521517235184,
+    "ordering_cost": 40005.0,
+    "service_level": -48199.64627839431,
+    "fill_rate": -48199.64627839432,
+    "stockout_rate": 0.3154674137422589,
+    "avg_daily_cost": 1550336.081207444,
+    "total_demand": 347.2857142857142,
+    "total_stockout_qty": 16739395.871825222,
+    "avg_ending_inv": 0.8600162753330575
+  },
+  "balanced": {
+    "total_cost": 167436293.7180459,
+    "stockout_cost": 167393958.71825224,
+    "holding_cost": 2329.9997936773743,
+    "ordering_cost": 40005.0,
+    "service_level": -48199.64627839431,
+    "fill_rate": -48199.64627839432,
+    "stockout_rate": 0.3154674137422589,
+    "avg_daily_cost": 1550336.0529448693,
+    "total_demand": 347.2857142857142,
+    "total_stockout_qty": 16739395.871825222,
+    "avg_ending_inv": 0.8588911064867938
+  },
+  "aggressive": {
+    "total_cost": 167436290.703928,
+    "stockout_cost": 167393958.71825224,
+    "holding_cost": 2326.9856757453044,
+    "ordering_cost": 40005.0,
+    "service_level": -48199.64627839431,
+    "fill_rate": -48199.64627839432,
+    "stockout_rate": 0.3154674137422589,
+    "avg_daily_cost": 1550336.0250363704,
+    "total_demand": 347.2857142857142,
+    "total_stockout_qty": 16739395.871825222,
+    "avg_ending_inv": 0.8577800338194134
+  },
+  "no_forecast": {
+    "total_cost": 167436189.3471476,
+    "stockout_cost": 167394005.71428573,
+    "holding_cost": 2178.6328618688585,
+    "ordering_cost": 40005.0,
+    "service_level": -48199.65981077746,
+    "fill_rate": -48199.65981077746,
+    "stockout_rate": 0.31602034797994694,
+    "avg_daily_cost": 1550335.0865476632,
+    "total_demand": 347.2857142857142,
+    "total_stockout_qty": 16739400.57142857,
+    "avg_ending_inv": 0.8030938004529852
+  }
+}

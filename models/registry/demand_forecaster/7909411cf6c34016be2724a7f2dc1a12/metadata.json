@@ -1,0 +1,218 @@
+{
+  "run_id": "7909411cf6c34016be2724a7f2dc1a12",
+  "timestamp": "2026-10-06T08:03:38.609178",
+  "config": {
+    "experiment": {
+      "name": "demand_forecasting",
+      "artifact_location": "models/mlruns"
+    },
+    "data": {
+      "features_path": "data/processed/features/demand_forecasting_features.parquet",
+      "target_col": "target_demand_7d",
+      "exclude_cols": [
+        "date",
+        "store",
+        "product_no",
+        "product_description",
+        "sales_type",
+        "target_demand_7d",
+        "target_demand_14d",
+        "target_demand_28d",
+        "target_zero_demand_7d",
+        "target_zero_demand_14d",
+        "target_zero_demand_28d",
+        "target_stockout_risk_7d",
+        "target_stockout_risk_14d",
+        "target_stockout_risk_28d",
+        "target_any_demand_7d",
+        "target_any_demand_14d",
+        "target_any_demand_28d"
+      ],
+      "filter_target_ge": 0
+    },
+    "split": {
+      "test_start_date": "2026-01-01",
+      "val_start_date": "2025-11-01"
+    },
+    "model": {
+      "type": "lightgbm",
+      "params": {
+        "objective": "poisson",
+        "metric": "rmse",
+        "boosting_type": "gbdt",
+        "num_leaves": 127,
+        "max_depth": 8,
+        "learning_rate": 0.05,
+        "n_estimators": 2000,
+        "min_child_samples": 50,
+        "subsample": 0.8,
+        "colsample_bytree": 0.8,
+        "reg_alpha": 0.1,
+        "reg_lambda": 0.1,
+        "random_state": 42,
+        "verbosity": -1,
+        "n_jobs": -1
+      },
+      "early_stopping_rounds": 100,
+      "categorical_features": [
+        "product_division",
+        "product_category",
+        "product_subcategory",
+        "product_segment",
+        "supplier",
+        "store",
+        "stock_status",
+        "sales_type",
+        "day_of_week",
+        "month",
+        "quarter",
+        "is_weekend",
+        "is_month_start",
+        "is_month_end"
+      ]
+    },
+    "training": {
+      "sample_frac": 1.0,
+      "sample_random_state": 42
+    },
+    "mlflow": {
+      "tracking_uri": "sqlite:///models/mlflow.db",
+      "model_name": "demand_forecaster",
+      "log_models": true,
+      "log_input_examples": true,
+      "registered_model_tags": {
+        "domain": "retail",
+        "task": "demand_forecasting",
+        "horizon": "7d"
+      }
+    },
+    "evaluation": {
+      "metrics": [
+        "rmse",
+        "mae",
+        "mape",
+        "r2",
+        "poisson_deviance"
+      ],
+      "groupby_eval": [
+        "store",
+        "product_no"
+      ],
+      "top_k_accuracy_k": [
+        1,
+        5,
+        10
+      ]
+    },
+    "monitoring": {
+      "drift_check_features": "all",
+      "psi_threshold": 0.2,
+      "performance_threshold_rmse": 1.0
+    }
+  },
+  "feature_cols": [
+    "product_division",
+    "product_category",
+    "product_subcategory",
+    "product_segment",
+    "supplier",
+    "net_qty_sold",
+    "sales_amount",
+    "return_qty",
+    "return_amount",
+    "unit_price",
+    "unit_cost",
+    "is_promo",
+    "is_markdown",
+    "is_clearance",
+    "qty_sold",
+    "cogs",
+    "transaction_count",
+    "qty_on_hand",
+    "stock_status",
+    "stock_unit_selling_price",
+    "stock_unit_cost_price",
+    "negative_qty_flag",
+    "writeoff_flag",
+    "gap_flag",
+    "observed_flag",
+    "sales_lag_1",
+    "sales_lag_7",
+    "sales_lag_14",
+    "sales_lag_28",
+    "sales_rolling_mean_7",
+    "sales_rolling_std_7",
+    "sales_rolling_sum_7",
+    "sales_rolling_mean_14",
+    "sales_rolling_std_14",
+    "sales_rolling_sum_14",
+    "sales_rolling_mean_28",
+    "sales_rolling_std_28",
+    "sales_rolling_sum_28",
+    "sales_zero_streak",
+    "sales_cv_28",
+    "is_promo_lag_7",
+    "is_promo_days_last_28",
+    "is_markdown_lag_7",
+    "is_markdown_days_last_28",
+    "is_clearance_lag_7",
+    "is_clearance_days_last_28",
+    "unit_price_lag_1",
+    "unit_price_rolling_mean_7",
+    "price_change_pct_7",
+    "inv_weeks_of_supply",
+    "inv_days_since_receipt",
+    "inv_gap_days_since_obs",
+    "inv_cost_retail_ratio",
+    "inv_stock_status_encoded",
+    "day_of_week",
+    "day_of_month",
+    "week_of_year",
+    "month",
+    "quarter",
+    "is_weekend",
+    "is_month_start",
+    "is_month_end",
+    "store_avg_daily_sales_28",
+    "store_product_rank"
+  ],
+  "cat_features": [
+    "product_division",
+    "product_category",
+    "product_subcategory",
+    "product_segment",
+    "supplier",
+    "store",
+    "stock_status",
+    "sales_type",
+    "day_of_week",
+    "month",
+    "quarter",
+    "is_weekend",
+    "is_month_start",
+    "is_month_end"
+  ],
+  "best_iteration": 75,
+  "val_metrics": {
+    "val_rmse": 0.2787396519410742,
+    "val_mae": 0.09201978715027696,
+    "val_r2": 0.21346671104337345,
+    "val_poisson_deviance": 0.29146694751629226,
+    "val_mape": 80.39708825558701
+  },
+  "test_metrics": {
+    "test_rmse": 0.21277346832233426,
+    "test_mae": 0.07030377246194128,
+    "test_r2": 0.19570658561834886,
+    "test_poisson_deviance": 0.21860432196109666,
+    "test_mape": 81.13757061995574
+  },
+  "data_stats": {
+    "train_date_range": [
+      "0",
+      "14769508"
+    ],
+    "n_stores": null,
+    "n_products": null
+  }
+}

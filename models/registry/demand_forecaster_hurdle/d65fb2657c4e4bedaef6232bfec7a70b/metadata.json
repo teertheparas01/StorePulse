@@ -1,0 +1,254 @@
+{
+  "run_id": "d65fb2657c4e4bedaef6232bfec7a70b",
+  "timestamp": "2026-10-06T09:42:32.472202",
+  "config": {
+    "experiment": {
+      "name": "demand_forecasting",
+      "artifact_location": "models/mlruns"
+    },
+    "data": {
+      "features_path": "data/processed/features/demand_forecasting_features.parquet",
+      "target_col": "target_demand_7d",
+      "exclude_cols": [
+        "date",
+        "store",
+        "product_no",
+        "product_description",
+        "sales_type",
+        "target_demand_7d",
+        "target_demand_14d",
+        "target_demand_28d",
+        "target_zero_demand_7d",
+        "target_zero_demand_14d",
+        "target_zero_demand_28d",
+        "target_stockout_risk_7d",
+        "target_stockout_risk_14d",
+        "target_stockout_risk_28d",
+        "target_any_demand_7d",
+        "target_any_demand_14d",
+        "target_any_demand_28d"
+      ],
+      "filter_target_ge": 0
+    },
+    "split": {
+      "test_start_date": "2026-01-01",
+      "val_start_date": "2025-11-01"
+    },
+    "model": {
+      "type": "lightgbm",
+      "quantiles": [
+        0.1,
+        0.5,
+        0.9
+      ],
+      "params": {
+        "objective": "quantile",
+        "alpha": 0.5,
+        "metric": "quantile",
+        "boosting_type": "gbdt",
+        "num_leaves": 127,
+        "max_depth": 8,
+        "learning_rate": 0.05,
+        "n_estimators": 2000,
+        "min_child_samples": 50,
+        "subsample": 0.8,
+        "colsample_bytree": 0.8,
+        "reg_alpha": 0.1,
+        "reg_lambda": 0.1,
+        "random_state": 42,
+        "verbosity": -1,
+        "n_jobs": -1
+      },
+      "early_stopping_rounds": 100,
+      "categorical_features": [
+        "product_division",
+        "product_category",
+        "product_subcategory",
+        "product_segment",
+        "supplier",
+        "store",
+        "stock_status",
+        "sales_type",
+        "day_of_week",
+        "month",
+        "quarter",
+        "is_weekend",
+        "is_month_start",
+        "is_month_end"
+      ]
+    },
+    "training": {
+      "sample_frac": 1.0,
+      "sample_random_state": 42
+    },
+    "loss": {
+      "stockout_cost_per_unit": 20.0,
+      "holding_cost_per_unit_per_period": 0.5,
+      "false_negative_cost": 20.0,
+      "false_positive_cost": 1.0
+    },
+    "mlflow": {
+      "tracking_uri": "sqlite:///models/mlflow.db",
+      "model_name": "demand_forecaster",
+      "log_models": true,
+      "log_input_examples": true,
+      "registered_model_tags": {
+        "domain": "retail",
+        "task": "demand_forecasting",
+        "horizon": "7d"
+      }
+    },
+    "evaluation": {
+      "metrics": [
+        "rmse",
+        "mae",
+        "mape",
+        "r2",
+        "poisson_deviance"
+      ],
+      "groupby_eval": [
+        "store",
+        "product_no"
+      ],
+      "top_k_accuracy_k": [
+        1,
+        5,
+        10
+      ]
+    },
+    "monitoring": {
+      "drift_check_features": "all",
+      "psi_threshold": 0.2,
+      "performance_threshold_rmse": 1.0
+    }
+  },
+  "feature_cols": [
+    "product_division",
+    "product_category",
+    "product_subcategory",
+    "product_segment",
+    "supplier",
+    "net_qty_sold",
+    "sales_amount",
+    "return_qty",
+    "return_amount",
+    "unit_price",
+    "unit_cost",
+    "is_promo",
+    "is_markdown",
+    "is_clearance",
+    "qty_sold",
+    "cogs",
+    "transaction_count",
+    "qty_on_hand",
+    "stock_status",
+    "stock_unit_selling_price",
+    "stock_unit_cost_price",
+    "negative_qty_flag",
+    "writeoff_flag",
+    "gap_flag",
+    "observed_flag",
+    "sales_lag_1",
+    "sales_lag_7",
+    "sales_lag_14",
+    "sales_lag_28",
+    "sales_rolling_mean_7",
+    "sales_rolling_std_7",
+    "sales_rolling_sum_7",
+    "sales_rolling_mean_14",
+    "sales_rolling_std_14",
+    "sales_rolling_sum_14",
+    "sales_rolling_mean_28",
+    "sales_rolling_std_28",
+    "sales_rolling_sum_28",
+    "sales_zero_streak",
+    "sales_cv_28",
+    "is_promo_lag_7",
+    "is_promo_days_last_28",
+    "is_markdown_lag_7",
+    "is_markdown_days_last_28",
+    "is_clearance_lag_7",
+    "is_clearance_days_last_28",
+    "unit_price_lag_1",
+    "unit_price_rolling_mean_7",
+    "price_change_pct_7",
+    "inv_weeks_of_supply",
+    "inv_days_since_receipt",
+    "inv_gap_days_since_obs",
+    "inv_cost_retail_ratio",
+    "inv_stock_status_encoded",
+    "day_of_week",
+    "day_of_month",
+    "week_of_year",
+    "month",
+    "quarter",
+    "is_weekend",
+    "is_month_start",
+    "is_month_end",
+    "store_avg_daily_sales_28",
+    "store_product_rank"
+  ],
+  "cat_features": [
+    "product_division",
+    "product_category",
+    "product_subcategory",
+    "product_segment",
+    "supplier",
+    "store",
+    "stock_status",
+    "sales_type",
+    "day_of_week",
+    "month",
+    "quarter",
+    "is_weekend",
+    "is_month_start",
+    "is_month_end"
+  ],
+  "binary": {
+    "best_iteration": 4,
+    "metrics": {
+      "auc": 0.8467890544558184,
+      "avg_precision": 0.3179808417320323,
+      "best_threshold": 0.19381293318674936,
+      "precision_at_best": 0.4338386324670254,
+      "recall_at_best": 0.22904026599033903,
+      "f1_at_best": 0.2998029232590918
+    }
+  },
+  "conditional": {
+    "0.1": {
+      "best_iteration": 469,
+      "metrics": {
+        "mae": 0.1086063554937207,
+        "rmse": 0.4227783936943657,
+        "pinball": 0.010882870775831492,
+        "asymmetric": 2.171585126229466,
+        "coverage_q10": 0.9097622397677065
+      }
+    },
+    "0.5": {
+      "best_iteration": 149,
+      "metrics": {
+        "mae": 0.10871733738323779,
+        "rmse": 0.41621209897713646,
+        "pinball": 0.05435866869161889,
+        "asymmetric": 2.1312331805006988,
+        "coverage_q50": 0.9107435720495057
+      }
+    },
+    "0.9": {
+      "best_iteration": 276,
+      "metrics": {
+        "mae": 0.29282424936283724,
+        "rmse": 0.49583164331587803,
+        "pinball": 0.07586076384793566,
+        "asymmetric": 1.281759135652935,
+        "coverage_q90": 0.8190226109712053
+      }
+    }
+  },
+  "data_stats": {
+    "n_stores": null,
+    "n_products": null
+  }
+}
