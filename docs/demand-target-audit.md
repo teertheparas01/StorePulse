@@ -1,7 +1,7 @@
 # Demand Target Audit: `target_demand_7d`
 
-**Date**: 2026-08-13  
-**Dataset**: `data/processed/features/demand_forecasting_features.parquet`  
+**Date**: 2026-08-13
+**Dataset**: `data/processed/features/demand_forecasting_features.parquet`
 **Status**: ❌ **CRITICAL BUG FOUND** - Target definition is incorrect
 
 ---

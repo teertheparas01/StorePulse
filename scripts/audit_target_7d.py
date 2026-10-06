@@ -1,9 +1,10 @@
 """Target demand_7d audit script."""
 
-import pandas as pd
-import numpy as np
-from pathlib import Path
 import json
+from pathlib import Path
+
+import numpy as np
+import pandas as pd
 
 FEATURE_DIR = Path("data/processed/features")
 
@@ -38,12 +39,14 @@ for _, row in sample.iterrows():
     store, prod, date = row["store"], row["product_no"], row["date"]
     # Get actual sales for T to T+6
     future_sales = df[
-        (df["store"] == store) & 
-        (df["product_no"] == prod) & 
-        (df["date"] >= date) & 
-        (df["date"] <= date + pd.Timedelta(days=6))
+        (df["store"] == store)
+        & (df["product_no"] == prod)
+        & (df["date"] >= date)
+        & (df["date"] <= date + pd.Timedelta(days=6))
     ]["net_qty_sold"].sum()
-    print(f"  {store}-{prod} @ {date.date()}: target={row[target_col]:.1f}, actual_sum={future_sales:.1f}, match={abs(row[target_col]-future_sales)<0.01}")
+    print(
+        f"  {store}-{prod} @ {date.date()}: target={row[target_col]:.1f}, actual_sum={future_sales:.1f}, match={abs(row[target_col]-future_sales)<0.01}"
+    )
 
 # 3. TARGET DISTRIBUTION
 print("\n3. TARGET DEMAND_7D DISTRIBUTION")
@@ -55,7 +58,7 @@ print(f"Median: {t.median():.4f}")
 print(f"Std: {t.std():.4f}")
 print(f"Min: {t.min():.4f}")
 print(f"Max: {t.max():.4f}")
-print(f"\nPercentiles:")
+print("\nPercentiles:")
 for p in [1, 5, 10, 25, 50, 75, 90, 95, 99, 99.9]:
     print(f"  {p}th: {t.quantile(p/100):.4f}")
 
@@ -65,7 +68,7 @@ print(f"Positive-demand percentage: {(t > 0).mean()*100:.2f}%")
 
 # Distribution of positive values
 t_pos = t[t > 0]
-print(f"\nPositive values only:")
+print("\nPositive values only:")
 print(f"  Count: {len(t_pos):,}")
 print(f"  Mean: {t_pos.mean():.4f}")
 print(f"  Median: {t_pos.median():.4f}")
@@ -95,15 +98,15 @@ print("-" * 80)
 df_sorted = df.sort_values(["store", "product_no", "date"]).reset_index(drop=True)
 df_sorted["gap_streak"] = (
     df_sorted.groupby(["store", "product_no"])["gap_flag"]
-    .apply(lambda x: x.astype(int) * (x.astype(int).groupby((x == False).cumsum()).cumcount() + 1))
-    .reset_index(level=[0,1], drop=True)
+    .apply(lambda x: x.astype(int) * (x.astype(int).groupby((not x).cumsum()).cumcount() + 1))
+    .reset_index(level=[0, 1], drop=True)
 )
 
 # Get max streak per gap period
-gap_periods = df_sorted[df_sorted["gap_flag"] == True].copy()
+gap_periods = df_sorted[df_sorted["gap_flag"]].copy()
 if len(gap_periods) > 0:
     streak_lengths = gap_periods.groupby(["store", "product_no"])["gap_streak"].max()
-    
+
     bins = {
         "0 (observed)": (streak_lengths == 0).sum(),
         "1-3 days": ((streak_lengths >= 1) & (streak_lengths <= 3)).sum(),
@@ -111,13 +114,13 @@ if len(gap_periods) > 0:
         "8-14 days": ((streak_lengths >= 8) & (streak_lengths <= 14)).sum(),
         ">14 days": (streak_lengths > 14).sum(),
     }
-    
+
     print("Gap period durations (max consecutive gap days per gap period):")
     for label, count in bins.items():
         pct = count / len(streak_lengths) * 100
         print(f"  {label}: {count:,} ({pct:.1f}%)")
-    
-    print(f"\nGap period stats:")
+
+    print("\nGap period stats:")
     print(f"  Mean: {streak_lengths.mean():.1f} days")
     print(f"  Median: {streak_lengths.median():.1f} days")
     print(f"  Max: {streak_lengths.max():.1f} days")
@@ -154,7 +157,7 @@ for col in feature_cols:
             corr = feat_sample[col].corr(target_sample)
             if not np.isnan(corr):
                 correlations[col] = abs(corr)
-        except:
+        except (TypeError, ValueError, AttributeError):
             pass
 
 # Sort by absolute correlation
@@ -172,8 +175,14 @@ if "sales_lag_1" in correlations:
 # 8. STATIC FEATURES AVAILABILITY
 print("\n8. STATIC FEATURES AVAILABILITY AT PREDICTION TIME")
 print("-" * 80)
-static_features = ["product_division", "product_category", "product_subcategory", 
-                   "product_segment", "supplier", "store"]
+static_features = [
+    "product_division",
+    "product_category",
+    "product_subcategory",
+    "product_segment",
+    "supplier",
+    "store",
+]
 for f in static_features:
     if f in df.columns:
         null_pct = df[f].isna().mean() * 100
@@ -188,7 +197,7 @@ for c in promo_cols:
         null_pct = df[c].isna().mean() * 100
         true_pct = df[c].sum() / len(df) * 100
         print(f"  {c}: null={null_pct:.1f}%, true={true_pct:.1f}%")
-        print(f"    Source: daily_sales.sales_type at day T (known from plan)")
+        print("    Source: daily_sales.sales_type at day T (known from plan)")
 
 # Verify these are NOT derived from target window
 print("\n  Verification: These come from sales_type on day T (from daily_sales)")
@@ -202,7 +211,7 @@ print("-" * 80)
 
 checks = {
     "sales_rolling_mean_7": "shift(1) applied → uses T-1 to T-7",
-    "sales_rolling_std_7": "shift(1) applied → uses T-1 to T-7", 
+    "sales_rolling_std_7": "shift(1) applied → uses T-1 to T-7",
     "sales_rolling_sum_7": "shift(1) applied → uses T-1 to T-7",
     "sales_rolling_mean_14": "shift(1) applied → uses T-1 to T-14",
     "sales_rolling_mean_28": "shift(1) applied → uses T-1 to T-28",
@@ -244,10 +253,12 @@ audit_data = {
         "median": float(t.median()),
         "std": float(t.std()),
         "zero_pct": float(zero_pct),
-        "percentiles": {f"p{p}": float(t.quantile(p/100)) for p in [1,5,10,25,50,75,90,95,99,99.9]}
+        "percentiles": {
+            f"p{p}": float(t.quantile(p / 100)) for p in [1, 5, 10, 25, 50, 75, 90, 95, 99, 99.9]
+        },
     },
-    "inventory_observed_pct": float(obs_count/total*100),
-    "inventory_gap_pct": float(gap_count/total*100),
+    "inventory_observed_pct": float(obs_count / total * 100),
+    "inventory_gap_pct": float(gap_count / total * 100),
     "gap_duration_distribution": {k: int(v) for k, v in bins.items()},
     "long_gap_recommendation": "RETAIN with gap_duration feature + weight adjustment",
     "top_correlations": {k: float(v) for k, v in sorted_corr[:20]},

@@ -1,9 +1,7 @@
 """Test raw data integrity."""
 
-import pandas as pd
-from pathlib import Path
 import hashlib
-
+from pathlib import Path
 
 ROOT_DIR = Path(__file__).parent.parent
 RAW_DIR = ROOT_DIR / "data" / "raw"
@@ -34,11 +32,12 @@ def test_raw_unchanged():
     if not hash_file.exists():
         # First run - skip
         return
-    
+
     import json
+
     with open(hash_file) as f:
         expected = json.load(f)
-    
+
     for name in ["retail_sales_ml_apl.csv", "retail_inventory_ml_apl.csv"]:
         path = RAW_DIR / name
         with open(path, "rb") as f:

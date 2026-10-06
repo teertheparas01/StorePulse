@@ -1,19 +1,18 @@
 """Model Serving API for Hurdle Demand Forecasting."""
 
-import yaml
-import pandas as pd
-import numpy as np
-import lightgbm as lgb
-from pathlib import Path
-from datetime import datetime
-from typing import Dict, List, Optional
 import json
 import warnings
+from datetime import datetime
+from pathlib import Path
+
+import lightgbm as lgb
+import pandas as pd
+import yaml
+
 warnings.filterwarnings("ignore")
 
-from flask import Flask, request, jsonify
-from functools import lru_cache
 
+from flask import Flask, jsonify, request
 
 CONFIG_PATH = Path(__file__).parent.parent.parent.parent / "config" / "ml.yaml"
 REGISTRY_DIR = Path(__file__).parent.parent.parent.parent / "models" / "registry"
@@ -33,24 +32,24 @@ class HurdleModelServer:
         self.cat_features = None
         self.binary_threshold = None
         self._load_models()
-    
+
     def _load_models(self):
         """Load latest hurdle model components from registry."""
         model_dir = REGISTRY_DIR / f"{self.model_name}_hurdle"
         if not model_dir.exists():
             raise FileNotFoundError(f"Hurdle model directory not found: {model_dir}")
-        
+
         versions = [d for d in model_dir.iterdir() if d.is_dir()]
         if not versions:
             raise FileNotFoundError(f"No model versions found in {model_dir}")
-        
+
         latest = max(versions, key=lambda d: d.stat().st_mtime)
         print(f"Loading hurdle model from {latest}")
-        
+
         # Load binary model
         binary_model_file = latest / "binary_model.txt"
         self.binary_model = lgb.Booster(model_file=str(binary_model_file))
-        
+
         # Load conditional models
         self.conditional_models = {}
         for q in self.quantiles:
@@ -59,19 +58,19 @@ class HurdleModelServer:
                 self.conditional_models[q] = lgb.Booster(model_file=str(cond_file))
             else:
                 raise FileNotFoundError(f"Conditional model not found: {cond_file}")
-        
+
         # Load metadata
         meta_file = latest / "metadata.json"
         with open(meta_file) as f:
             metadata = json.load(f)
-        
+
         self.feature_cols = metadata["feature_cols"]
         self.cat_features = metadata["cat_features"]
         self.binary_threshold = metadata["binary"]["metrics"]["best_threshold"]
-        
+
         print(f"Loaded hurdle model: binary_threshold={self.binary_threshold:.4f}")
         print(f"Features: {len(self.feature_cols)}, Categorical: {len(self.cat_features)}")
-    
+
     def _prepare_features(self, df: pd.DataFrame) -> pd.DataFrame:
         """Prepare features for prediction."""
         X = df[self.feature_cols].copy()
@@ -80,11 +79,11 @@ class HurdleModelServer:
             if col in X.columns:
                 X[col] = X[col].astype("category")
         return X
-    
+
     def predict(self, df: pd.DataFrame) -> pd.DataFrame:
         """
         Generate hurdle model predictions.
-        
+
         Returns DataFrame with columns:
         - demand_probability: P(demand > 0)
         - demand_binary: 1 if P(demand > 0) >= threshold else 0
@@ -92,13 +91,11 @@ class HurdleModelServer:
         - hurdle_10, hurdle_50, hurdle_90: hurdle predictions (binary * conditional)
         """
         X = self._prepare_features(df)
-        
+
         # Binary prediction
-        binary_pred = self.binary_model.predict(
-            X, num_iteration=self.binary_model.best_iteration
-        )
+        binary_pred = self.binary_model.predict(X, num_iteration=self.binary_model.best_iteration)
         demand_binary = (binary_pred >= self.binary_threshold).astype(int)
-        
+
         # Conditional predictions
         cond_preds = {}
         for q in self.quantiles:
@@ -106,21 +103,25 @@ class HurdleModelServer:
                 cond_preds[q] = self.conditional_models[q].predict(
                     X, num_iteration=self.conditional_models[q].best_iteration
                 )
-        
+
         # Hurdle predictions
-        result = df[["date", "store", "product_no"]].copy() if all(c in df.columns for c in ["date", "store", "product_no"]) else pd.DataFrame(index=df.index)
-        
+        result = (
+            df[["date", "store", "product_no"]].copy()
+            if all(c in df.columns for c in ["date", "store", "product_no"])
+            else pd.DataFrame(index=df.index)
+        )
+
         result["demand_probability"] = binary_pred
         result["demand_binary"] = demand_binary
-        
+
         for q in self.quantiles:
             if q in cond_preds:
                 result[f"quantile_{int(q*100)}"] = cond_preds[q]
                 result[f"hurdle_{int(q*100)}"] = demand_binary * cond_preds[q]
-        
+
         return result
-    
-    def predict_single(self, features: Dict) -> Dict:
+
+    def predict_single(self, features: dict) -> dict:
         """Predict for a single store-product-date."""
         df = pd.DataFrame([features])
         result = self.predict(df)
@@ -147,10 +148,10 @@ def health():
 def predict():
     try:
         data = request.get_json()
-        
+
         if not data:
             return jsonify({"error": "No data provided"}), 400
-        
+
         # Handle single prediction or batch
         if isinstance(data, dict):
             # Single prediction
@@ -160,15 +161,15 @@ def predict():
             df = pd.DataFrame(data)
         else:
             return jsonify({"error": "Invalid data format"}), 400
-        
+
         # Validate required columns
         missing = set(server.feature_cols) - set(df.columns)
         if missing:
             return jsonify({"error": f"Missing features: {missing}"}), 400
-        
+
         result = server.predict(df)
         return jsonify(result.to_dict(orient="records"))
-    
+
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
@@ -179,7 +180,7 @@ def predict_batch():
     try:
         if "file" not in request.files:
             return jsonify({"error": "No file provided"}), 400
-        
+
         file = request.files["file"]
         if file.filename.endswith(".csv"):
             df = pd.read_csv(file)
@@ -187,34 +188,36 @@ def predict_batch():
             df = pd.read_parquet(file)
         else:
             return jsonify({"error": "Unsupported file format"}), 400
-        
+
         result = server.predict(df)
         return jsonify(result.to_dict(orient="records"))
-    
+
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
 
 @app.route("/model/info", methods=["GET"])
 def model_info():
-    return jsonify({
-        "model_name": server.model_name,
-        "quantiles": server.quantiles,
-        "binary_threshold": server.binary_threshold,
-        "n_features": len(server.feature_cols),
-        "features": server.feature_cols,
-        "categorical_features": server.cat_features,
-    })
+    return jsonify(
+        {
+            "model_name": server.model_name,
+            "quantiles": server.quantiles,
+            "binary_threshold": server.binary_threshold,
+            "n_features": len(server.feature_cols),
+            "features": server.feature_cols,
+            "categorical_features": server.cat_features,
+        }
+    )
 
 
 if __name__ == "__main__":
     import sys
-    
+
     if len(sys.argv) > 1 and sys.argv[1] == "test":
         # Test mode: load model and run sample prediction
         config = load_config()
         server = HurdleModelServer(config)
-        
+
         # Test with sample data
         test_df = pd.read_parquet("data/processed/features/test_sample_1pct.parquet")
         test_df = test_df.head(5)

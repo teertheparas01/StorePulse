@@ -183,7 +183,7 @@ All 25 have:
 # 1. Sort by Start Date
 # 2. For each day from min(Start) to min(max(End), 2026-04-24):
 #    - If covered by a record: use that record's values
-#    - If in gap: 
+#    - If in gap:
 #        * Option A: Forward-fill last known (conservative)
 #        * Option B: Linear interpolate qty (risky)
 #        * Option C: Mark as NaN with gap flag

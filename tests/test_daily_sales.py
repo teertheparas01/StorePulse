@@ -1,8 +1,8 @@
 """Test daily sales output."""
 
-import pandas as pd
 from pathlib import Path
 
+import pandas as pd
 
 ROOT_DIR = Path(__file__).parent.parent
 PROCESSED_DIR = ROOT_DIR / "data" / "processed"
@@ -31,15 +31,29 @@ def test_daily_sales_columns():
     """Daily sales should have expected columns."""
     df = load_daily_sales()
     expected_cols = {
-        "date", "store", "product_no", "product_description",
-        "product_division", "product_category", "product_subcategory", "product_segment",
+        "date",
+        "store",
+        "product_no",
+        "product_description",
+        "product_division",
+        "product_category",
+        "product_subcategory",
+        "product_segment",
         "supplier",
-        "qty_sold", "sales_amount", "cogs",
+        "qty_sold",
+        "sales_amount",
+        "cogs",
         "transaction_count",
-        "return_qty", "return_amount",
-        "net_qty_sold", "net_sales_amount",
-        "unit_price", "unit_cost",
-        "sales_type", "is_promo", "is_markdown", "is_clearance"
+        "return_qty",
+        "return_amount",
+        "net_qty_sold",
+        "net_sales_amount",
+        "unit_price",
+        "unit_cost",
+        "sales_type",
+        "is_promo",
+        "is_markdown",
+        "is_clearance",
     }
     assert set(df.columns) == expected_cols
 
