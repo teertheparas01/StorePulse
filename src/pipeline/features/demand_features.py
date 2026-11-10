@@ -652,21 +652,26 @@ def build_feature_dataset() -> pd.DataFrame:
 
 
 def define_target(df: pd.DataFrame, horizon: int = 7) -> pd.DataFrame:
-    """Define 7-day demand target (sum of net_qty_sold over T to T+6)."""
+    """Define a calendar-day demand target from T through T+horizon-1.
+
+    The dataframe must contain a complete calendar grid per store-product.
+    A target is null when its full future window is not available.
+    """
     df = df.copy()
     df = df.sort_values(["store", "product_no", "date"]).reset_index(drop=True)
 
     # Target: sum of net_qty_sold over next 7 days (including today)
     df[f"target_demand_{horizon}d"] = df.groupby(["store", "product_no"])["net_qty_sold"].transform(
-        lambda x: x.rolling(horizon, min_periods=1).sum().shift(-horizon + 1)
+        lambda x: x.rolling(horizon, min_periods=horizon).sum().shift(-horizon + 1)
     )
 
     # Also define binary targets
-    df[f"target_any_demand_{horizon}d"] = (df[f"target_demand_{horizon}d"] > 0).astype(int)
+    demand = df[f"target_demand_{horizon}d"]
+    df[f"target_any_demand_{horizon}d"] = (demand > 0).astype(float).where(demand.notna())
     df[f"target_stockout_risk_{horizon}d"] = (
-        (df[f"target_demand_{horizon}d"] > df["qty_on_hand"]).astype(int)
+        (demand > df["qty_on_hand"]).astype(float).where(demand.notna() & df["qty_on_hand"].notna())
         if "qty_on_hand" in df.columns
-        else np.nan
+        else pd.Series(np.nan, index=df.index)
     )
 
     return df

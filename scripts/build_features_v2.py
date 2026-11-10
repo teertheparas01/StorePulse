@@ -222,17 +222,18 @@ def main():
 
     for h in [7, 14, 28]:
         df[f"target_demand_{h}d"] = grp["net_qty_sold"].transform(
-            lambda x, h=h: x.rolling(h, min_periods=1).sum().shift(-h + 1)
+            lambda x, h=h: x.rolling(h, min_periods=h).sum().shift(-h + 1)
         )
-        df[f"target_any_demand_{h}d"] = (df[f"target_demand_{h}d"] > 0).astype(int)
+        demand = df[f"target_demand_{h}d"]
+        df[f"target_any_demand_{h}d"] = (demand > 0).astype(float).where(demand.notna())
         df[f"target_zero_demand_{h}d"] = grp["net_qty_sold"].transform(
             lambda x, h=h: (x.rolling(h, min_periods=h).max() == 0).astype(int).shift(-h + 1)
         )
         if "qty_on_hand" in df.columns:
             df[f"target_stockout_risk_{h}d"] = (
-                (df[f"target_demand_{h}d"] > df["qty_on_hand"])
-                .astype(int)
-                .where(df["qty_on_hand"].notna(), np.nan)
+                (demand > df["qty_on_hand"])
+                .astype(float)
+                .where(demand.notna() & df["qty_on_hand"].notna())
             )
 
     # Validation

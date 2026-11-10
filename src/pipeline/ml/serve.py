@@ -1,26 +1,96 @@
 """Model Serving API for Hurdle Demand Forecasting."""
 
 import json
+import os
 import warnings
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 
 import lightgbm as lgb
 import pandas as pd
 import yaml
+from flask import Flask, jsonify, render_template, request
+from flask_cors import CORS
+
+from pipeline.recommendations import ProductAlternativeResearcher, generate_recommendation
 
 warnings.filterwarnings("ignore")
 
 
-from flask import Flask, jsonify, request
-
 CONFIG_PATH = Path(__file__).parent.parent.parent.parent / "config" / "ml.yaml"
 REGISTRY_DIR = Path(__file__).parent.parent.parent.parent / "models" / "registry"
+PROJECT_ROOT = Path(__file__).parent.parent.parent.parent
+FEATURE_METADATA_PATH = PROJECT_ROOT / "data" / "processed" / "features" / "feature_metadata.json"
+MONITORING_DIR = PROJECT_ROOT / "monitoring"
+BACKTEST_DIR = PROJECT_ROOT / "backtest_results"
 
 
 def load_config():
     with open(CONFIG_PATH) as f:
         return yaml.safe_load(f)
+
+
+def _read_json(path: Path) -> dict:
+    """Read a JSON artifact, returning an empty object when unavailable."""
+    if not path.exists():
+        return {}
+    with path.open(encoding="utf-8") as file:
+        return json.load(file)
+
+
+def _latest_json(directory: Path, pattern: str) -> dict:
+    """Load the newest JSON artifact matching a pattern."""
+    files = sorted(directory.glob(pattern), key=lambda path: path.stat().st_mtime, reverse=True)
+    return _read_json(files[0]) if files else {}
+
+
+def dashboard_data() -> dict:
+    """Build the dashboard summary from local pipeline artifacts."""
+    metadata = _read_json(FEATURE_METADATA_PATH)
+    dataset = metadata.get("dataset_info", {})
+    monitoring = _latest_json(MONITORING_DIR, "monitoring_report_*.json")
+    backtest = _latest_json(BACKTEST_DIR, "policy_comparison_*.json")
+    drift = monitoring.get("feature_drift", {})
+    drifted_features = [name for name, result in drift.items() if result.get("drift_detected")]
+    policy_metrics = [
+        {"name": name, **metrics}
+        for name, metrics in backtest.items()
+        if isinstance(metrics, dict) and "total_cost" in metrics
+    ]
+    policy_metrics.sort(key=lambda item: item["total_cost"])
+    operational_policies = [
+        policy for policy in policy_metrics if policy["name"] != "oracle_perfect"
+    ]
+
+    config = server.config if server is not None else load_config()
+    web_config = config.get("recommendations", {}).get("web_search", {})
+    api_key_env = web_config.get("api_key_env", "BRAVE_SEARCH_API_KEY")
+    return {
+        "dataset": {
+            "rows": dataset.get("rows", 0),
+            "columns": dataset.get("columns", 0),
+            "store_products": dataset.get("unique_store_product", 0),
+            "date_range": dataset.get("date_range", []),
+        },
+        "model": {
+            "name": config.get("mlflow", {}).get("model_name", "demand_forecaster"),
+            "loaded": server is not None,
+            "features": len(server.feature_cols) if server is not None else 0,
+        },
+        "web_search": {
+            "provider": web_config.get("provider", "brave"),
+            "configured": bool(os.getenv(api_key_env)),
+        },
+        "monitoring": {
+            "timestamp": monitoring.get("timestamp"),
+            "drifted_features": drifted_features,
+            "drift_count": len(drifted_features),
+        },
+        "backtest": {
+            "policies": policy_metrics[:6],
+            "best_policy": operational_policies[0] if operational_policies else None,
+        },
+    }
 
 
 class HurdleModelServer:
@@ -130,6 +200,8 @@ class HurdleModelServer:
 
 # Flask API
 app = Flask(__name__)
+# Enable CORS for Vite dev server
+CORS(app, origins=["http://localhost:*", "http://127.0.0.1:*"], supports_credentials=True)
 server = None
 
 
@@ -141,7 +213,28 @@ def init_server():
 
 @app.route("/health", methods=["GET"])
 def health():
-    return jsonify({"status": "healthy", "timestamp": datetime.utcnow().isoformat()})
+    config = server.config if server is not None else load_config()
+    web_config = config.get("recommendations", {}).get("web_search", {})
+    api_key_env = web_config.get("api_key_env", "BRAVE_SEARCH_API_KEY")
+    return jsonify(
+        {
+            "status": "healthy",
+            "timestamp": datetime.now(UTC).isoformat(),
+            "web_search_configured": bool(os.getenv(api_key_env)),
+        }
+    )
+
+
+@app.route("/dashboard", methods=["GET"])
+def dashboard():
+    """Render the browser dashboard."""
+    return render_template("dashboard.html")
+
+
+@app.route("/dashboard-data", methods=["GET"])
+def dashboard_summary():
+    """Return dashboard KPIs and recent pipeline artifacts."""
+    return jsonify(dashboard_data())
 
 
 @app.route("/predict", methods=["POST"])
@@ -196,6 +289,58 @@ def predict_batch():
         return jsonify({"error": str(e)}), 500
 
 
+@app.route("/recommendations", methods=["POST"])
+def recommendations():
+    """Return explainable inventory actions for one or more feature rows."""
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({"error": "No data provided"}), 400
+
+        if isinstance(data, dict):
+            df = pd.DataFrame([data])
+        elif isinstance(data, list):
+            df = pd.DataFrame(data)
+        else:
+            return jsonify({"error": "Invalid data format"}), 400
+
+        missing = set(server.feature_cols) - set(df.columns)
+        if missing:
+            return jsonify({"error": f"Missing features: {missing}"}), 400
+
+        predictions = server.predict(df)
+        result = [
+            generate_recommendation(
+                row.to_dict(), prediction.to_dict(), server.config.get("recommendations")
+            ).to_dict()
+            for (_, row), (_, prediction) in zip(df.iterrows(), predictions.iterrows(), strict=True)
+        ]
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/product-alternatives", methods=["POST"])
+def product_alternatives():
+    """Search the web for better comparable products."""
+    try:
+        data = request.get_json()
+        if not isinstance(data, dict):
+            return jsonify({"error": "A product object is required"}), 400
+
+        config = server.config if server is not None else load_config()
+        web_config = config.get("recommendations", {}).get("web_search", {})
+        researcher = ProductAlternativeResearcher.from_config(web_config)
+        limit = int(data.get("limit", web_config.get("default_limit", 5)))
+        return jsonify(researcher.find_alternatives(data, limit=max(1, min(limit, 10))))
+    except RuntimeError as error:
+        return jsonify({"error": str(error)}), 503
+    except ValueError as error:
+        return jsonify({"error": str(error)}), 400
+    except Exception as error:
+        return jsonify({"error": str(error)}), 500
+
+
 @app.route("/model/info", methods=["GET"])
 def model_info():
     return jsonify(
@@ -227,4 +372,4 @@ if __name__ == "__main__":
     else:
         # Server mode
         init_server()
-        app.run(host="0.0.0.0", port=5000, debug=False)
+        app.run(host="0.0.0.0", port=int(os.getenv("PORT", "5000")), debug=False)

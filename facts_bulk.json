@@ -1,0 +1,61 @@
+{
+  "documents": [
+    {
+      "doc_id": "d1",
+      "version": "v1",
+      "text": "The hurdle model is a two-stage model: a binary classifier predicting P(demand > 0) and conditional quantile regressors for quantity given demand > 0."
+    },
+    {
+      "doc_id": "d2",
+      "version": "v1",
+      "text": "The binary classifier uses P90 forecast as demand probability signal. Higher P90 means higher probability of demand > 0. Returns binary flag: 1 if P90 > threshold else 0. Default threshold is 0.5."
+    },
+    {
+      "doc_id": "d3",
+      "version": "v1",
+      "text": "The hurdle model prediction combines binary probability with conditional quantiles: hurdle_10 = demand_binary * quantile_10, hurdle_50 = demand_binary * quantile_50, hurdle_90 = demand_binary * quantile_90. If demand_binary is 0, all hurdle predictions are 0."
+    }
+  ],
+  "facts": [
+    {
+      "fact_id": "f1",
+      "subject": "hurdle model",
+      "subject_id": "model:hurdle",
+      "relation": "architecture",
+      "kind": "text",
+      "value": "two-stage: binary classifier + conditional quantile regressor",
+      "doc_id": "d1",
+      "version": "v1",
+      "start": 22,
+      "end": 119,
+      "quote": "two-stage model: a binary classifier predicting P(demand > 0) and conditional quantile regressors"
+    },
+    {
+      "fact_id": "f2",
+      "subject": "hurdle model binary classifier",
+      "subject_id": "model:hurdle:binary",
+      "relation": "demand_probability_signal",
+      "kind": "text",
+      "value": "P90 forecast",
+      "doc_id": "d2",
+      "version": "v1",
+      "start": 27,
+      "end": 39,
+      "quote": "P90 forecast"
+    },
+    {
+      "fact_id": "f3",
+      "subject": "hurdle model binary classifier",
+      "subject_id": "model:hurdle:binary",
+      "relation": "default_threshold",
+      "kind": "number",
+      "value": "0.5",
+      "unit": "probability",
+      "doc_id": "d2",
+      "version": "v1",
+      "start": 192,
+      "end": 195,
+      "quote": "0.5"
+    }
+  ]
+}

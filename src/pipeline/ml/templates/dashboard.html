@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Retail Decision Intelligence</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='dashboard.css') }}">
+  </head>
+  <body>
+    <main class="shell">
+      <header class="hero">
+        <div>
+          <p class="eyebrow">RETAIL DECISION INTELLIGENCE</p>
+          <h1>Make the next product decision with evidence.</h1>
+          <p class="subtitle">Demand signals, inventory actions, model health, and product alternatives in one workspace.</p>
+        </div>
+        <div class="status-pill"><span id="status-dot"></span><span id="status-text">Loading dashboard</span></div>
+      </header>
+
+      <section class="kpi-grid" aria-label="Pipeline summary">
+        <article class="card kpi"><span>Store-products</span><strong id="store-products">—</strong><small>covered by the feature panel</small></article>
+        <article class="card kpi"><span>Feature rows</span><strong id="feature-rows">—</strong><small>calendar-grid observations</small></article>
+        <article class="card kpi"><span>Drift alerts</span><strong id="drift-count">—</strong><small>from the latest monitor run</small></article>
+        <article class="card kpi"><span>Best policy cost</span><strong id="best-cost">—</strong><small id="best-policy">latest backtest</small></article>
+      </section>
+
+      <section class="content-grid">
+        <article class="card panel">
+          <div class="panel-heading"><div><p class="eyebrow">WEB RESEARCH</p><h2>Find a better product</h2></div><span class="tag" id="web-status">Checking key</span></div>
+          <p class="muted">Search public web results for comparable products and rank value, quality, price, and availability evidence.</p>
+          <form id="alternative-form">
+            <label>Product description<input name="product_description" required placeholder="e.g. Trailblazer footwear"></label>
+            <div class="two-col">
+              <label>Category<input name="product_category" placeholder="Footwear"></label>
+              <label>Current price<input name="unit_price" type="number" min="0" step="0.01" placeholder="100"></label>
+            </div>
+            <label>Subcategory<input name="product_subcategory" placeholder="Running shoes"></label>
+            <button type="submit">Search alternatives <span>↗</span></button>
+          </form>
+          <div id="alternative-results" class="results" aria-live="polite"></div>
+        </article>
+
+        <article class="card panel">
+          <div class="panel-heading"><div><p class="eyebrow">OPERATIONS</p><h2>System snapshot</h2></div><span class="tag green" id="model-status">Model API</span></div>
+          <div class="snapshot"><div><span>Model</span><strong id="model-name">—</strong></div><div><span>Dataset period</span><strong id="date-range">—</strong></div><div><span>Monitoring run</span><strong id="monitor-time">—</strong></div></div>
+          <h3>Drifted features</h3>
+          <div id="drift-list" class="chips"><span class="muted">Loading…</span></div>
+          <h3>Policy comparison</h3>
+          <div id="policy-list" class="policy-list"><span class="muted">Loading…</span></div>
+        </article>
+      </section>
+
+      <footer>Inventory actions are available through <code>POST /recommendations</code>. Product research uses <code>POST /product-alternatives</code>.</footer>
+    </main>
+    <script src="{{ url_for('static', filename='dashboard.js') }}"></script>
+  </body>
+</html>

@@ -69,3 +69,14 @@ htmlcov/
 
 # ruff
 .ruff_cache/
+
+# Local database & temporary files
+*.db
+*.db-journal
+*.tar.gz
+*.zip
+xerj*
+lightgbm_repo/
+*.bak
+.claude/
+.mcp.json

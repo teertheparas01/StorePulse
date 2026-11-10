@@ -2,7 +2,13 @@
 
 **Date**: 2026-08-13
 **Dataset**: `data/processed/features/demand_forecasting_features.parquet`
-**Status**: ❌ **CRITICAL BUG FOUND** - Target definition is incorrect
+**Status**: ✅ **RESOLVED** - Calendar-day target definition implemented and verified
+
+The original audit below documents the defect that was found. It was fixed by
+building targets on the complete store-product calendar grid, filling missing
+sales dates with zero, and leaving incomplete future windows null. The corrected
+implementation is covered by `tests/test_targets.py` and the generated feature
+artifact was independently checked against calendar rolling windows.
 
 ---
 
@@ -19,9 +25,9 @@
 
 ## 2. Target Definition Verification
 
-### ❌ CRITICAL BUG IDENTIFIED
+### Historical defect identified before the fix
 
-**Current Implementation (WRONG)**:
+**Implementation that caused the original defect (historical)**:
 ```python
 df["target_demand_7d"] = grp["net_qty_sold"].transform(
     lambda x: x.rolling(7, min_periods=1).sum().shift(-6)

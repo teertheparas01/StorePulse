@@ -199,12 +199,18 @@ retail-decision-intelligence/
 
 ---
 
-## Next Steps (Not Yet Implemented)
+## Current Next Steps
+
+The reconstruction pipeline is complete. The following downstream capabilities
+are now implemented in `src/pipeline/`:
 
 1. **Feature Engineering** - Rolling statistics, lag features, seasonal indicators
 2. **Train/Val/Test Split** - Time-based splits for ML
-3. **Model Training** - Demand forecasting, stockout prediction, dead-stock detection
-4. **API/Dashboard** - Serving layer for recommendations
+3. **Model Training** - Quantile and hurdle demand forecasting
+4. **Model Operations** - Registry, serving, monitoring, and backtesting
+5. **Recommendations** - Inventory actions and web-based product alternatives
+
+The remaining product-level item is a dashboard/UI for these API outputs.
 
 ---
 

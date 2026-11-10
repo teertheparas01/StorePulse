@@ -2,7 +2,6 @@
 
 from pathlib import Path
 
-import numpy as np
 import pandas as pd
 
 PROCESSED_DIR = Path(__file__).parent.parent.parent.parent / "data" / "processed"
@@ -14,17 +13,17 @@ CUTOFF_DATE = pd.Timestamp("2026-04-24")
 
 TARGET_DEFINITIONS = {
     "target_demand_7d": {
-        "description": "Sum of net quantity sold over 7 days (T to T+6)",
+        "description": "Sum of net quantity sold over 7 calendar days (T to T+6)",
         "horizon_days": 7,
         "aggregation": "sum",
         "target_type": "regression",
         "unit": "units",
         "leakage_safe": True,
         "available_at": "end_of_day_T_plus_6",
-        "notes": "Primary demand forecasting target. Uses net_qty_sold (gross - returns).",
+        "notes": "Uses net_qty_sold (gross - returns) on a complete calendar-day grid.",
     },
     "target_demand_14d": {
-        "description": "Sum of net quantity sold over 14 days (T to T+13)",
+        "description": "Sum of net quantity sold over 14 calendar days (T to T+13)",
         "horizon_days": 14,
         "aggregation": "sum",
         "target_type": "regression",
@@ -34,7 +33,7 @@ TARGET_DEFINITIONS = {
         "notes": "Longer horizon for replenishment planning.",
     },
     "target_demand_28d": {
-        "description": "Sum of net quantity sold over 28 days (T to T+27)",
+        "description": "Sum of net quantity sold over 28 calendar days (T to T+27)",
         "horizon_days": 28,
         "aggregation": "sum",
         "target_type": "regression",
@@ -77,20 +76,27 @@ TARGET_DEFINITIONS = {
 
 
 def add_targets(df: pd.DataFrame, horizons: list[int] | None = None) -> pd.DataFrame:
+    """Add demand targets using complete calendar-day windows.
+
+    The input must contain one row per calendar day for each store-product pair.
+    Missing sales should already be represented by ``net_qty_sold == 0``.
+    Targets at the end of each series are left null until a complete future
+    window is available.
+    """
     if horizons is None:
         horizons = [7, 14, 28]
-    """Add all target columns to feature dataframe."""
     df = df.copy()
     df = df.sort_values(["store", "product_no", "date"]).reset_index(drop=True)
 
     for h in horizons:
         # Regression targets
         df[f"target_demand_{h}d"] = df.groupby(["store", "product_no"])["net_qty_sold"].transform(
-            lambda x, h=h: x.rolling(h, min_periods=1).sum().shift(-h + 1)
+            lambda x, h=h: x.rolling(h, min_periods=h).sum().shift(-h + 1)
         )
 
         # Binary: any demand
-        df[f"target_any_demand_{h}d"] = (df[f"target_demand_{h}d"] > 0).astype(int)
+        demand = df[f"target_demand_{h}d"]
+        df[f"target_any_demand_{h}d"] = (demand > 0).astype(float).where(demand.notna())
 
         # Binary: zero demand (all days zero)
         df[f"target_zero_demand_{h}d"] = df.groupby(["store", "product_no"])[
@@ -102,9 +108,9 @@ def add_targets(df: pd.DataFrame, horizons: list[int] | None = None) -> pd.DataF
         # Binary: stockout risk (demand > inventory at day T)
         if "qty_on_hand" in df.columns:
             df[f"target_stockout_risk_{h}d"] = (
-                (df[f"target_demand_{h}d"] > df["qty_on_hand"])
-                .astype(int)
-                .where(df["qty_on_hand"].notna(), np.nan)
+                (demand > df["qty_on_hand"])
+                .astype(float)
+                .where(demand.notna() & df["qty_on_hand"].notna())
             )
 
     return df

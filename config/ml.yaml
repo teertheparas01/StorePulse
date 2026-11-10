@@ -110,3 +110,14 @@ monitoring:
   drift_check_features: "all"
   psi_threshold: 0.2
   performance_threshold_rmse: 1.0
+
+recommendations:
+  demand_probability_threshold: 0.5
+  excess_inventory_multiplier: 2.0
+  markdown_statuses: ["markdown", "clearance"]
+  web_search:
+    provider: "brave"
+    api_key_env: "BRAVE_SEARCH_API_KEY"
+    endpoint: "https://api.search.brave.com/res/v1/web/search"
+    timeout_seconds: 10
+    default_limit: 5

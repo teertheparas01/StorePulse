@@ -691,11 +691,12 @@ def add_targets(df: pd.DataFrame) -> pd.DataFrame:
     for h in [7, 14, 28]:
         # Regression targets: sum over T to T+h-1 (h calendar days)
         df[f"target_demand_{h}d"] = grp["net_qty_sold"].transform(
-            lambda x, h=h: x.rolling(h, min_periods=1).sum().shift(-h + 1)
+            lambda x, h=h: x.rolling(h, min_periods=h).sum().shift(-h + 1)
         )
 
         # Binary: any demand
-        df[f"target_any_demand_{h}d"] = (df[f"target_demand_{h}d"] > 0).astype(int)
+        demand = df[f"target_demand_{h}d"]
+        df[f"target_any_demand_{h}d"] = (demand > 0).astype(float).where(demand.notna())
 
         # Binary: zero demand (all h days zero)
         df[f"target_zero_demand_{h}d"] = grp["net_qty_sold"].transform(
@@ -705,9 +706,9 @@ def add_targets(df: pd.DataFrame) -> pd.DataFrame:
         # Binary: stockout risk
         if "qty_on_hand" in df.columns:
             df[f"target_stockout_risk_{h}d"] = (
-                (df[f"target_demand_{h}d"] > df["qty_on_hand"])
-                .astype(int)
-                .where(df["qty_on_hand"].notna(), np.nan)
+                (demand > df["qty_on_hand"])
+                .astype(float)
+                .where(demand.notna() & df["qty_on_hand"].notna())
             )
 
     return df

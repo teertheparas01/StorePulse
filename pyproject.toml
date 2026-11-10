@@ -36,7 +36,7 @@ target-version = "py311"
 [tool.ruff.lint]
 select = ["E", "W", "F", "I", "UP", "B", "C4", "SIM", "T20"]
 ignore = ["E501", "B008"]
-per-file-ignores = { "notebooks/*" = ["ALL"], "scripts/*" = ["ALL"], "src/pipeline/ml/train*.py" = ["T201", "UP038"], "src/pipeline/ml/serve.py" = ["T201", "E402"], "src/pipeline/ml/monitor.py" = ["T201", "E402"], "src/pipeline/ml/backtest.py" = ["T201", "F841", "B007"], "src/pipeline/ml/registry.py" = ["T201", "F841"], "src/pipeline/ml/train_hurdle.py" = ["T201", "F841"], "src/pipeline/features/demand_features.py" = ["T201", "B007"], "src/pipeline/validation/validate.py" = ["T201"], "src/pipeline/ml/train.py" = ["T201", "UP038"], "src/pipeline/run_pipeline.py" = ["T201"], "tests/*" = ["T201"] }
+per-file-ignores = { "notebooks/*" = ["ALL"], "scripts/*" = ["ALL"], "src/pipeline/ml/train*.py" = ["T201", "UP038"], "src/pipeline/ml/serve.py" = ["T201", "E402"], "src/pipeline/ml/monitor.py" = ["T201", "E402"], "src/pipeline/ml/backtest.py" = ["T201", "F841", "B007"], "src/pipeline/ml/registry.py" = ["T201", "F841"], "src/pipeline/ml/train_hurdle.py" = ["T201", "F841"], "src/pipeline/features/demand_features.py" = ["T201", "B007"], "src/pipeline/validation/validate.py" = ["T201"], "src/pipeline/ml/train.py" = ["T201", "UP038"], "src/pipeline/run_pipeline.py" = ["T201"], "tests/*" = ["T201"], "inspect_*.py" = ["T201"], "jan_*.py" = ["T201"], "src/storepulse/seed.py" = ["T201"] }
 
 [tool.ruff.format]
 quote-style = "double"
