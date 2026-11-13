@@ -95,10 +95,10 @@ input:focus, select:focus, textarea:focus {
 
 /* Utility classes */
 .card {
-  background: rgba(18, 26, 45, 0.84);
+  background: var(--panel);
   border: 1px solid var(--line);
   border-radius: var(--radius-lg);
-  box-shadow: var(--shadow);
+  box-shadow: 0 10px 26px rgba(30, 32, 67, 0.05);
   padding: 24px;
 }
 

@@ -17,6 +17,15 @@ export const getModelInfo = () => api.get('/model/info');
 // Dashboard
 export const getDashboardData = () => api.get('/dashboard-data');
 
+// Retail operations
+export const getSales = (params = {}) => api.get('/api/sales', { params });
+export const createSale = (sale) => api.post('/api/sales', sale);
+export const getProducts = (params = {}) => api.get('/api/products', { params });
+export const getInventoryTransactions = (params = {}) => api.get('/api/inventory/transactions', { params });
+export const getUnderperformingProducts = (params = {}) => api.get('/api/replacements/underperforming', { params });
+export const searchReplacements = (productId, limit = 3) =>
+  api.post('/api/replacements/search', { product_id: productId, limit });
+
 // Predictions
 export const predict = (features) => api.post('/predict', features);
 export const predictBatch = (file) => {

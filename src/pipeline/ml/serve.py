@@ -11,6 +11,12 @@ import pandas as pd
 import yaml
 from flask import Flask, jsonify, render_template, request
 from flask_cors import CORS
+from storepulse.database import init_db
+from storepulse.routes.analytics import analytics_bp
+from storepulse.routes.inventory import inventory_bp
+from storepulse.routes.products import products_bp
+from storepulse.routes.replacements import replacements_bp
+from storepulse.routes.sales import sales_bp
 
 from pipeline.recommendations import ProductAlternativeResearcher, generate_recommendation
 
@@ -204,6 +210,14 @@ app = Flask(__name__)
 CORS(app, origins=["http://localhost:*", "http://127.0.0.1:*"], supports_credentials=True)
 server = None
 
+# Register the operational POS and inventory decision endpoints alongside the
+# forecasting API so the frontend can use one configured backend origin.
+app.register_blueprint(inventory_bp)
+app.register_blueprint(products_bp)
+app.register_blueprint(replacements_bp)
+app.register_blueprint(sales_bp)
+app.register_blueprint(analytics_bp)
+
 
 def init_server():
     global server
@@ -371,5 +385,6 @@ if __name__ == "__main__":
         print(result.to_string())
     else:
         # Server mode
+        init_db()
         init_server()
         app.run(host="0.0.0.0", port=int(os.getenv("PORT", "5000")), debug=False)

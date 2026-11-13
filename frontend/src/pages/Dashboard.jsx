@@ -1,521 +1,274 @@
-import { useEffect, useState, useMemo } from 'react';
-import { ShoppingBag, RotateCcw, DollarSign, RefreshCw } from 'lucide-react';
-import { getDashboardData } from '../services/api';
-import {
-  ResponsiveContainer,
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  LineChart,
-  Line,
-  AreaChart,
-  Area,
-  PieChart,
-  Pie,
-  Cell,
-  Legend,
-} from 'recharts';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Activity, AlertCircle, ArrowDownRight, ArrowUpRight, BadgeIndianRupee, Boxes, Check, CircleDollarSign, ClipboardList, LoaderCircle, Package, Plus, Printer, RotateCcw, Search, Sparkles, X } from 'lucide-react';
+import { Bar, CartesianGrid, ComposedChart, Line, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import { createSale, getInventoryTransactions, getProducts, getSales, getUnderperformingProducts, searchReplacements } from '../services/api';
 import './Dashboard.css';
 
-const COLORS = ['#65e6bf', '#8ea7ff', '#ffd166', '#ff8d9c', '#a78bfa', '#34d399', '#f472b6'];
+const money = (value) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(Number(value || 0));
+const formatDate = (value) => new Date(value).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
 
-export default function Dashboard() {
-  const [data, setData] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [revenuePeriod, setRevenuePeriod] = useState('week'); // 'week' | 'month' | 'quarter'
-  const [demoChartType, setDemoChartType] = useState('line');
+function getPeriodStart(period, now = new Date()) {
+  const start = new Date(now);
+  start.setHours(0, 0, 0, 0);
+  if (period === 'week') start.setDate(start.getDate() - ((start.getDay() + 6) % 7));
+  if (period === 'month') start.setDate(1);
+  if (period === 'quarter') {
+    start.setMonth(Math.floor(start.getMonth() / 3) * 3, 1);
+  }
+  return start;
+}
 
-  const fetchData = async () => {
+function BillingDialog({ onClose, onCreated }) {
+  const [products, setProducts] = useState([]);
+  const [query, setQuery] = useState('');
+  const [cart, setCart] = useState([]);
+  const [paymentMethod, setPaymentMethod] = useState('cash');
+  const [customerName, setCustomerName] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const [receipt, setReceipt] = useState(null);
+
+  useEffect(() => {
+    getProducts({ status: 'active' })
+      .then(({ data }) => setProducts(data.products || []))
+      .catch(() => setError('Could not load products. Check that the retail API is running.'));
+  }, []);
+
+  const visibleProducts = products.filter((product) =>
+    `${product.name} ${product.sku} ${product.barcode}`.toLowerCase().includes(query.toLowerCase()),
+  ).slice(0, 8);
+  const subtotal = cart.reduce((sum, item) => sum + item.product.selling_price * item.quantity, 0);
+  const tax = subtotal * 0.05;
+  const total = subtotal + tax;
+
+  const addProduct = (product) => {
+    setCart((current) => {
+      const existing = current.find((item) => item.product.id === product.id);
+      if (existing) return current.map((item) => item.product.id === product.id ? { ...item, quantity: Math.min(item.quantity + 1, product.stock_quantity) } : item);
+      if (product.stock_quantity < 1) return current;
+      return [...current, { product, quantity: 1 }];
+    });
+  };
+
+  const changeQuantity = (productId, quantity) => setCart((current) => current
+    .map((item) => item.product.id === productId ? { ...item, quantity: Math.max(0, Math.min(quantity, item.product.stock_quantity)) } : item)
+    .filter((item) => item.quantity > 0));
+
+  const submit = async () => {
+    if (!cart.length) return;
+    setBusy(true);
+    setError('');
     try {
-      setLoading(true);
-      const response = await getDashboardData();
-      setData(response.data);
-      setError(null);
-    } catch (err) {
-      setError(err.message);
+      const { data } = await createSale({
+        items: cart.map(({ product, quantity }) => ({ product_id: product.id, quantity })),
+        payment_method: paymentMethod,
+        customer_name: customerName,
+      });
+      setReceipt(data.sale);
+      onCreated();
+    } catch (requestError) {
+      setError(requestError.response?.data?.error || 'Billing could not be completed. Please review stock and try again.');
     } finally {
-      setLoading(false);
+      setBusy(false);
     }
   };
 
-  useEffect(() => {
-    fetchData();
-    const interval = setInterval(fetchData, 60000);
-    return () => clearInterval(interval);
+  return (
+    <div className="billing-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
+      <section className="billing-dialog" role="dialog" aria-modal="true" aria-labelledby="billing-title">
+        <header className="billing-header">
+          <div><span className="eyebrow">Point of sale</span><h2 id="billing-title">{receipt ? 'Bill generated' : 'Create a bill'}</h2></div>
+          <button className="icon-button" onClick={onClose} aria-label="Close billing"><X size={18} /></button>
+        </header>
+        {receipt ? (
+          <div className="receipt-view">
+            <div className="receipt-success"><span><Check size={18} /></span><div><strong>Payment recorded</strong><small>{receipt.receipt_no}</small></div></div>
+            <div className="receipt-items">{receipt.items?.map((item) => <div key={item.id}><span>{item.product_name} × {item.quantity}</span><strong>{money(item.total_price)}</strong></div>)}</div>
+            <div className="receipt-total"><span>Total paid</span><strong>{money(receipt.total_amount)}</strong></div>
+            <button className="button-secondary receipt-print" onClick={() => window.print()}><Printer size={16} /> Print receipt</button>
+          </div>
+        ) : (
+          <>
+            <div className="billing-content">
+              <div className="billing-products">
+                <label className="billing-search"><Search size={16} /><input autoFocus value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Find a product or scan a barcode" /></label>
+                <div className="billing-product-list">
+                  {visibleProducts.map((product) => <button className="billing-product" key={product.id} onClick={() => addProduct(product)} disabled={!product.stock_quantity}>
+                    <span className="product-monogram"><Package size={17} /></span><span className="billing-product-name"><strong>{product.name}</strong><small>{product.sku} · {product.stock_quantity} in stock</small></span><strong>{money(product.selling_price)}</strong><Plus size={16} />
+                  </button>)}
+                  {!visibleProducts.length && <p className="billing-empty">No matching products.</p>}
+                </div>
+              </div>
+              <aside className="billing-cart">
+                <h3>Current bill <span>{cart.length} {cart.length === 1 ? 'item' : 'items'}</span></h3>
+                <div className="cart-lines">{cart.map(({ product, quantity }) => <div className="cart-line" key={product.id}>
+                  <div><strong>{product.name}</strong><small>{money(product.selling_price)} each</small><div className="quantity-control"><button onClick={() => changeQuantity(product.id, quantity - 1)} aria-label={`Remove one ${product.name}`}>−</button><span>{quantity}</span><button onClick={() => changeQuantity(product.id, quantity + 1)} aria-label={`Add one ${product.name}`}>+</button></div></div><b>{money(product.selling_price * quantity)}</b>
+                </div>)}{!cart.length && <p className="billing-empty">Add products to start this bill.</p>}</div>
+                <label className="billing-field">Customer name <input value={customerName} onChange={(event) => setCustomerName(event.target.value)} placeholder="Optional" /></label>
+                <label className="billing-field">Payment method <select value={paymentMethod} onChange={(event) => setPaymentMethod(event.target.value)}><option value="cash">Cash</option><option value="card">Card</option><option value="upi">UPI</option></select></label>
+                <div className="bill-totals"><div><span>Subtotal</span><span>{money(subtotal)}</span></div><div><span>Tax (5%)</span><span>{money(tax)}</span></div><div className="bill-grand-total"><strong>Total</strong><strong>{money(total)}</strong></div></div>
+                {error && <p className="form-error" role="alert">{error}</p>}
+                <button className="button-primary bill-submit" onClick={submit} disabled={busy || !cart.length}>{busy ? <LoaderCircle className="spin" size={17} /> : <BadgeIndianRupee size={17} />}{busy ? 'Generating bill…' : 'Generate bill'}</button>
+              </aside>
+            </div>
+            {error && <p className="form-error billing-load-error" role="alert">{error}</p>}
+          </>
+        )}
+      </section>
+    </div>
+  );
+}
+
+export default function Dashboard() {
+  const [period, setPeriod] = useState('week');
+  const [now] = useState(() => new Date());
+  const [sales, setSales] = useState([]);
+  const [returns, setReturns] = useState([]);
+  const [underperforming, setUnderperforming] = useState([]);
+  const [recommendations, setRecommendations] = useState({});
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
+  const [billingOpen, setBillingOpen] = useState(false);
+
+  const loadDashboard = useCallback(async () => {
+    try {
+      const results = await Promise.allSettled([
+        getSales({ limit: 500 }),
+        getInventoryTransactions({ limit: 1000 }),
+        getUnderperformingProducts(),
+      ]);
+      if (results[0].status === 'fulfilled') setSales(results[0].value.data.sales || []);
+      else setLoadError('Sales data is unavailable. Start the retail API and refresh.');
+      if (results[1].status === 'fulfilled') setReturns((results[1].value.data || []).filter((tx) => tx.transaction_type === 'return'));
+      if (results[2].status === 'fulfilled') setUnderperforming(results[2].value.data.underperforming_products || []);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
-  // Revenue Bar Chart Data:
-  // - Week: Only ONE week (7 daily bars)
-  // - Month: 4 weekly bars
-  // - Quarter: 3 monthly bars
-  const revenueChartData = useMemo(() => {
-    if (revenuePeriod === 'week') {
-      return [
-        { label: 'Mon', revenue: 94200, detail: 'Mon, Nov 3' },
-        { label: 'Tue', revenue: 88500, detail: 'Tue, Nov 4' },
-        { label: 'Wed', revenue: 96300, detail: 'Wed, Nov 5' },
-        { label: 'Thu', revenue: 91100, detail: 'Thu, Nov 6' },
-        { label: 'Fri', revenue: 114200, detail: 'Fri, Nov 7' },
-        { label: 'Sat', revenue: 126500, detail: 'Sat, Nov 8' },
-        { label: 'Sun', revenue: 108400, detail: 'Sun, Nov 9' },
-      ];
-    }
-    if (revenuePeriod === 'month') {
-      return [
-        { label: 'Week 1', revenue: 684000, detail: 'Oct 13 - 19' },
-        { label: 'Week 2', revenue: 712500, detail: 'Oct 20 - 26' },
-        { label: 'Week 3', revenue: 748000, detail: 'Oct 27 - Nov 2' },
-        { label: 'Week 4', revenue: 719200, detail: 'Nov 3 - 9' },
-      ];
-    }
-    // quarter
-    return [
-      { label: 'Sep', revenue: 2750000, detail: 'September (Month 1)' },
-      { label: 'Oct', revenue: 2980000, detail: 'October (Month 2)' },
-      { label: 'Nov', revenue: 2863700, detail: 'November (Month 3)' },
-    ];
-  }, [revenuePeriod]);
+  useEffect(() => { loadDashboard(); }, [loadDashboard]);
 
-  // Summary KPIs for the active revenue period
-  const periodSummary = useMemo(() => {
-    const total = revenueChartData.reduce((sum, item) => sum + item.revenue, 0);
-    const avg = Math.round(total / revenueChartData.length);
-    const peak = revenueChartData.reduce((max, item) => (item.revenue > max.revenue ? item : max), revenueChartData[0]);
-
-    if (revenuePeriod === 'week') {
-      return {
-        totalLabel: 'Total Week',
-        total,
-        avgLabel: 'Daily Avg',
-        avg,
-        peakLabel: 'Peak Day',
-        peak: `${peak.label} ($${peak.revenue.toLocaleString()})`,
-      };
-    }
-    if (revenuePeriod === 'month') {
-      return {
-        totalLabel: 'Total Month',
-        total,
-        avgLabel: 'Weekly Avg',
-        avg,
-        peakLabel: 'Peak Week',
-        peak: `${peak.label} ($${peak.revenue.toLocaleString()})`,
-      };
-    }
-    return {
-      totalLabel: 'Total Quarter',
-      total,
-      avgLabel: 'Monthly Avg',
-      avg,
-      peakLabel: 'Peak Month',
-      peak: `${peak.label} ($${peak.revenue.toLocaleString()})`,
+  const periodData = useMemo(() => {
+    const start = getPeriodStart(period, now);
+    const filtered = sales.filter((sale) => new Date(sale.created_at) >= start && new Date(sale.created_at) <= now);
+    const chartBuckets = new Map();
+    const bucketFor = (date) => {
+      const keyDate = new Date(date);
+      if (period === 'week') return { key: keyDate.toISOString().slice(0, 10), label: keyDate.toLocaleDateString('en-IN', { weekday: 'short' }) };
+      if (period === 'month') {
+        const weekNumber = Math.floor((keyDate.getDate() - 1) / 7) + 1;
+        return { key: `${keyDate.getFullYear()}-${keyDate.getMonth()}-${weekNumber}`, label: `Week ${weekNumber}` };
+      }
+      return { key: `${keyDate.getFullYear()}-${keyDate.getMonth()}`, label: keyDate.toLocaleDateString('en-IN', { month: 'short' }) };
     };
-  }, [revenueChartData, revenuePeriod]);
+    filtered.forEach((sale) => {
+      const bucket = bucketFor(sale.created_at);
+      const current = chartBuckets.get(bucket.key) || { key: bucket.key, label: bucket.label, revenue: 0, units: 0, products: new Set() };
+      current.revenue += Number(sale.total_amount || 0);
+      (sale.items || []).forEach((item) => { current.units += Number(item.quantity || 0); current.products.add(item.product_id); });
+      chartBuckets.set(bucket.key, current);
+    });
+    const periodReturns = returns.filter((tx) => new Date(tx.created_at) >= start && new Date(tx.created_at) <= now);
+    const returnUnits = periodReturns.reduce((total, tx) => total + Math.abs(Number(tx.quantity || 0)), 0);
+    const returnBuckets = new Map();
+    periodReturns.forEach((tx) => {
+      const bucket = bucketFor(tx.created_at);
+      returnBuckets.set(bucket.key, (returnBuckets.get(bucket.key) || 0) + Math.abs(Number(tx.quantity || 0)));
+      if (!chartBuckets.has(bucket.key)) chartBuckets.set(bucket.key, { key: bucket.key, label: bucket.label, revenue: 0, units: 0, products: new Set() });
+    });
+    const buckets = [...chartBuckets.values()].map((bucket) => ({ ...bucket, products: bucket.products.size, returns: returnBuckets.get(bucket.key) || 0 }));
+    const revenue = filtered.reduce((total, sale) => total + Number(sale.total_amount || 0), 0);
+    const units = filtered.reduce((total, sale) => total + (sale.items || []).reduce((itemTotal, item) => itemTotal + Number(item.quantity || 0), 0), 0);
+    const distinctProducts = new Set(filtered.flatMap((sale) => (sale.items || []).map((item) => item.product_id))).size;
+    return { buckets, revenue, units, distinctProducts, returnUnits, billCount: filtered.length, start };
+  }, [now, period, sales, returns]);
 
-  // Demo chart data
-  const demoLineData = useMemo(() => [
-    { month: 'Jan', revenue: 628, orders: 73, returns: 12, newCustomers: 45 },
-    { month: 'Feb', revenue: 695, orders: 82, returns: 8, newCustomers: 52 },
-    { month: 'Mar', revenue: 720, orders: 88, returns: 15, newCustomers: 48 },
-    { month: 'Apr', revenue: 680, orders: 79, returns: 10, newCustomers: 41 },
-    { month: 'May', revenue: 750, orders: 92, returns: 11, newCustomers: 55 },
-    { month: 'Jun', revenue: 810, orders: 98, returns: 14, newCustomers: 62 },
-  ], []);
+  const runReplacementSearch = async (productId) => {
+    setRecommendations((current) => ({ ...current, [productId]: { loading: true } }));
+    try {
+      const { data } = await searchReplacements(productId);
+      setRecommendations((current) => ({ ...current, [productId]: { results: data.recommendations || [] } }));
+    } catch (error) {
+      setRecommendations((current) => ({ ...current, [productId]: { error: error.response?.data?.error || 'Could not get replacement ideas.' } }));
+    }
+  };
 
-  const demoPieData = useMemo(() => [
-    { name: 'Scholar Footwear', value: 433212, color: COLORS[0] },
-    { name: 'Femme Footwear', value: 172500, color: COLORS[1] },
-    { name: 'Junior Apparel', value: 23067, color: COLORS[2] },
-    { name: 'Accessories', value: 45890, color: COLORS[3] },
-    { name: 'Other', value: 12345, color: COLORS[4] },
-  ], []);
-
-  const demoAreaData = useMemo(() => [
-    { week: 'W1', actual: 620, forecast: 590, target: 600 },
-    { week: 'W2', actual: 680, forecast: 650, target: 620 },
-    { week: 'W3', actual: 710, forecast: 680, target: 640 },
-    { week: 'W4', actual: 650, forecast: 700, target: 660 },
-    { week: 'W5', actual: 720, forecast: 710, target: 680 },
-    { week: 'W6', actual: 780, forecast: 730, target: 700 },
-  ], []);
-
-  const demoBarData = useMemo(() => [
-    { product: 'Trailblazer', sold: 81, returned: 2, revenue: 125000 },
-    { product: 'Flight Classic', sold: 79, returned: 1, revenue: 98000 },
-    { product: 'Boot Collection', sold: 63, returned: 0, revenue: 89000 },
-    { product: 'Court Casual', sold: 52, returned: 3, revenue: 67000 },
-    { product: 'Retro Legend', sold: 48, returned: 1, revenue: 54000 },
-    { product: 'Cozy Pullovers', sold: 42, returned: 5, revenue: 38000 },
-  ], []);
-
-  if (loading && !data) {
-    return (
-      <div className="dashboard-loading">
-        <div className="spinner-large" />
-        <p>Loading dashboard...</p>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="dashboard-error">
-        <RotateCcw size={48} color="var(--danger)" />
-        <h2>Failed to load dashboard</h2>
-        <p>{error}</p>
-        <button className="btn" onClick={fetchData}><RefreshCw size={16} /> Retry</button>
-      </div>
-    );
-  }
-
-  const dataset = data?.dataset || {};
-
-  // KPI Calculations from real data
-  const totalProductsSold = dataset.rows || 0;
-  const totalRevenue = data?.backtest?.best_policy?.total_cost ?
-    Math.abs(data.backtest.best_policy.total_cost) : 628778;
-  const totalReturns = 112; // From Jan data
-  const refundAmount = 10912;
+  const rangeLabel = period === 'week' ? 'This week' : period === 'month' ? 'This month' : 'This quarter';
+  const replacements = underperforming.slice(0, 4);
 
   return (
     <div className="dashboard">
-      {/* KPI Cards Row */}
-      <section className="kpi-grid" aria-label="Key metrics">
-        <article className="kpi-card revenue">
-          <div className="kpi-header">
-            <div>
-              <div className="kpi-label">Total Revenue</div>
-              <div className="kpi-value">${totalRevenue.toLocaleString()}</div>
-              <div className="kpi-sub">vs last month <span className="kpi-trend">+12.3%</span></div>
-            </div>
-            <div className="kpi-icon"><DollarSign size={24} /></div>
-          </div>
-        </article>
+      <header className="dashboard-heading">
+        <div><p className="eyebrow">STORE OVERVIEW</p><h1>Welcome back</h1><p className="dashboard-subtitle">Here’s your overall store performance today.</p></div>
+        <button className="button-primary billing-launch" onClick={() => setBillingOpen(true)}><BadgeIndianRupee size={18} /> Create bill</button>
+      </header>
 
-        <article className="kpi-card returns">
-          <div className="kpi-header">
-            <div>
-              <div className="kpi-label">Products Returned</div>
-              <div className="kpi-value">{totalReturns.toLocaleString()}</div>
-              <div className="kpi-sub">
-                Refunded <span className="refund-amount">${refundAmount.toLocaleString()}</span>
-                <span style={{color:'var(--text-muted)'}}>({((refundAmount/totalRevenue)*100).toFixed(1)}%)</span>
+      {loadError && <div className="dashboard-alert" role="status"><AlertCircle size={17} />{loadError}<button onClick={loadDashboard}>Retry</button></div>}
+
+      <section className="sales-section" aria-labelledby="sales-title">
+        <div className="section-heading">
+          <div><span className="section-kicker"><Activity size={15} /> SALES OVERVIEW</span><h2 id="sales-title">Sales funnel</h2><p>Revenue, product movement, and returns for {rangeLabel.toLowerCase()}.</p></div>
+          <div className="period-switch" role="group" aria-label="Sales period">
+            {[['week', 'Week'], ['month', 'Month'], ['quarter', 'Quarter']].map(([value, label]) => <button key={value} className={period === value ? 'selected' : ''} onClick={() => setPeriod(value)} aria-pressed={period === value}>{label}</button>)}
+          </div>
+        </div>
+        <div className="sales-layout">
+          <div className="sales-chart-area">
+            <div className="sales-chart-legend"><span><i className="legend-revenue" />Revenue</span><span><i className="legend-products" />Units sold</span><span><i className="legend-returns" />Units returned</span></div>
+            <div className="sales-chart">
+              {loading ? <div className="chart-state"><LoaderCircle className="spin" size={22} />Loading sales…</div> : periodData.buckets.length ? <ResponsiveContainer width="100%" height="100%">
+                <ComposedChart data={periodData.buckets} margin={{ top: 8, right: 8, left: -12, bottom: 2 }}>
+                  <CartesianGrid vertical={false} stroke="var(--line)" strokeDasharray="4 6" />
+                  <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fill: 'var(--text-muted)', fontSize: 11 }} />
+                  <YAxis yAxisId="revenue" axisLine={false} tickLine={false} tick={{ fill: 'var(--text-muted)', fontSize: 10 }} tickFormatter={(value) => value >= 100000 ? `₹${(value / 100000).toFixed(1)}L` : `₹${Math.round(value / 1000)}k`} />
+                  <YAxis yAxisId="units" orientation="right" hide />
+                  <Tooltip contentStyle={{ background: 'var(--panel)', border: '1px solid var(--line)', borderRadius: 10 }} formatter={(value, name) => [name === 'Revenue' ? money(value) : value, name]} />
+                  <Bar yAxisId="revenue" dataKey="revenue" name="Revenue" fill="var(--accent-2)" radius={[5, 5, 0, 0]} maxBarSize={42} />
+                  <Line yAxisId="units" dataKey="units" name="Units sold" stroke="var(--accent)" strokeWidth={2} dot={{ r: 3, fill: 'var(--accent)' }} />
+                  <Line yAxisId="units" dataKey="returns" name="Units returned" stroke="var(--danger)" strokeWidth={2} strokeDasharray="5 4" dot={false} />
+                </ComposedChart>
+              </ResponsiveContainer> : <div className="chart-state"><ClipboardList size={22} /><span>No sales recorded {rangeLabel.toLowerCase()}.</span></div>}
+            </div>
+            <p className="chart-caption">Sales are from completed POS bills since {formatDate(periodData.start)}. Return counts use recorded inventory return transactions.</p>
+          </div>
+          <aside className="sales-summary">
+            <div className="summary-primary"><span>Total revenue</span><strong>{money(periodData.revenue)}</strong><small>{periodData.billCount} completed {periodData.billCount === 1 ? 'bill' : 'bills'}</small><span className="summary-orb"><CircleDollarSign size={21} /></span></div>
+            <div className="summary-stat"><span className="summary-icon products-icon"><Boxes size={17} /></span><div><small>Products sold</small><strong>{periodData.units.toLocaleString()} <em>units</em></strong><span>{periodData.distinctProducts} different products</span></div></div>
+            <div className="summary-stat"><span className="summary-icon returns-icon"><RotateCcw size={17} /></span><div><small>Products returned</small><strong>{periodData.returnUnits.toLocaleString()} <em>units</em></strong><span>Recorded in inventory</span></div></div>
+          </aside>
+        </div>
+      </section>
+
+      <section className="replacement-section" aria-labelledby="replacement-title">
+        <div className="section-heading replacement-heading">
+          <div><span className="section-kicker"><Sparkles size={15} /> DECISION SUPPORT</span><h2 id="replacement-title">AI product replacements</h2><p>Find alternatives for slow-moving stock and review the rationale before acting.</p></div>
+          <span className="count-badge"><Package size={14} />{underperforming.length} products to review</span>
+        </div>
+        {loading ? <div className="replacement-empty"><LoaderCircle className="spin" size={20} />Scanning inventory health…</div> : replacements.length ? <div className="replacement-list">
+          {replacements.map((entry) => {
+            const product = entry.product;
+            const search = recommendations[product.id];
+            return <article className="replacement-row" key={product.id}>
+              <div className="replacement-product-icon"><Package size={20} /></div>
+              <div className="replacement-product-info"><strong>{product.name}</strong><span>{product.sku} <i /> {product.category}</span></div>
+              <div className="replacement-metric"><small>Stock</small><strong>{product.stock_quantity} units</strong></div>
+              <div className="replacement-metric capital-metric"><small>Capital tied up</small><strong>{money(entry.trapped_capital)}</strong></div>
+              <div className="replacement-action">
+                {search?.results?.length ? <div className="replacement-result"><strong>{search.results[0].recommended_title}</strong><span>{search.results[0].reasoning || 'Alternative found for review'}</span></div> : <button className="replacement-button" disabled={search?.loading} onClick={() => runReplacementSearch(product.id)}>{search?.loading ? <LoaderCircle className="spin" size={15} /> : <Sparkles size={15} />}{search?.loading ? 'Finding…' : 'Find replacement'}<ArrowUpRight size={14} /></button>}
+                {search?.error && <small className="replacement-error">{search.error}</small>}
               </div>
-            </div>
-            <div className="kpi-icon"><RotateCcw size={24} /></div>
-          </div>
-        </article>
-
-        <article className="kpi-card sold">
-          <div className="kpi-header">
-            <div>
-              <div className="kpi-label">Products Sold</div>
-              <div className="kpi-value">{totalProductsSold.toLocaleString()}</div>
-              <div className="kpi-sub">Active SKUs <span className="kpi-trend" style={{background:'var(--accent-dim)',color:'var(--accent-2)'}}>{dataset.store_products?.toLocaleString() || '—'}</span></div>
-            </div>
-            <div className="kpi-icon"><ShoppingBag size={24} /></div>
-          </div>
-        </article>
+            </article>;
+          })}
+        </div> : <div className="replacement-empty"><Check size={18} /><span>No products currently meet the slow-stock replacement criteria.</span></div>}
+        <div className="replacement-footnote"><AlertCircle size={14} />Suggestions are decision support. Review evidence and approve any catalog changes yourself.</div>
       </section>
 
-      {/* Charts Row */}
-      <section className="charts-row">
-        {/* Revenue Overview Chart */}
-        <article className="card chart-card">
-          <div className="chart-title">
-            <div>
-              <h3>
-                {revenuePeriod === 'week' && 'Weekly Revenue'}
-                {revenuePeriod === 'month' && 'Monthly Revenue'}
-                {revenuePeriod === 'quarter' && 'Quarterly Revenue'}
-              </h3>
-              <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>
-                {revenuePeriod === 'week' && 'Daily breakdown for the current week (7 days)'}
-                {revenuePeriod === 'month' && 'Weekly breakdown for the current month (4 weeks)'}
-                {revenuePeriod === 'quarter' && 'Monthly breakdown for the current quarter (3 months)'}
-              </p>
-            </div>
-            <div className="chart-actions">
-              {[
-                { id: 'week', label: 'Week' },
-                { id: 'month', label: 'Month' },
-                { id: 'quarter', label: 'Quarter' },
-              ].map(p => (
-                <button
-                  key={p.id}
-                  className={`chart-btn ${revenuePeriod === p.id ? 'active' : ''}`}
-                  onClick={() => setRevenuePeriod(p.id)}
-                >
-                  {p.label}
-                </button>
-              ))}
-            </div>
-          </div>
-          <div style={{ height: 300 }}>
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={revenueChartData} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#273552" vertical={false} />
-                <XAxis dataKey="label" stroke="#91a0bd" fontSize={12} tickLine={false} />
-                <YAxis
-                  stroke="#91a0bd"
-                  fontSize={12}
-                  tickLine={false}
-                  tickFormatter={v => (v >= 1000000 ? `$${(v / 1000000).toFixed(1)}M` : `$${(v / 1000).toFixed(0)}k`)}
-                />
-                <Tooltip
-                  contentStyle={{ background: '#121a2d', border: '1px solid #273552', borderRadius: '8px' }}
-                  formatter={(value) => [`$${Number(value).toLocaleString()}`, 'Revenue']}
-                  labelFormatter={(label) => {
-                    const item = revenueChartData.find(d => d.label === label);
-                    return item?.detail ? `${label} (${item.detail})` : label;
-                  }}
-                />
-                <Bar
-                  dataKey="revenue"
-                  fill="#65e6bf"
-                  radius={[4, 4, 0, 0]}
-                  maxBarWidth={revenuePeriod === 'week' ? 44 : revenuePeriod === 'month' ? 52 : 64}
-                />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-          <div className="revenue-summary-row">
-            <div className="revenue-summary-pill">
-              <span className="pill-dot" style={{ background: '#65e6bf' }} />
-              <span>{periodSummary.totalLabel}: <strong>${periodSummary.total.toLocaleString()}</strong></span>
-            </div>
-            <div className="revenue-summary-pill">
-              <span className="pill-dot" style={{ background: '#8ea7ff' }} />
-              <span>{periodSummary.avgLabel}: <strong>${periodSummary.avg.toLocaleString()}</strong></span>
-            </div>
-            <div className="revenue-summary-pill">
-              <span className="pill-dot" style={{ background: '#ffd166' }} />
-              <span>{periodSummary.peakLabel}: <strong>{periodSummary.peak}</strong></span>
-            </div>
-          </div>
-        </article>
-
-        {/* Right Side - Quick Insights */}
-        <article className="card chart-card">
-          <div className="chart-title">
-            <h3>Quick Insights</h3>
-            <div className="chart-actions">
-              <select
-                value={demoChartType}
-                onChange={e => setDemoChartType(e.target.value)}
-                style={{ background: '#0c1428', border: '1px solid var(--line)', color: 'var(--text)', borderRadius: '8px', padding: '6px 12px' }}
-              >
-                <option value="line">Revenue Trend</option>
-                <option value="pie">Division Split</option>
-                <option value="area">Forecast vs Actual</option>
-                <option value="bar">Top Products</option>
-              </select>
-            </div>
-          </div>
-          <div style={{ height: 320 }}>
-            {demoChartType === 'line' && (
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={demoLineData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#273552" />
-                  <XAxis dataKey="month" stroke="#91a0bd" />
-                  <YAxis stroke="#91a0bd" tickFormatter={v => `$${v}k`} />
-                  <Tooltip contentStyle={{ background: '#121a2d', border: '1px solid #273552' }} />
-                  <Legend />
-                  <Line type="monotone" dataKey="revenue" stroke="#65e6bf" strokeWidth={2} dot={{ r: 4 }} name="Revenue ($k)" />
-                  <Line type="monotone" dataKey="orders" stroke="#8ea7ff" strokeWidth={2} dot={{ r: 4 }} name="Orders" yAxisId="right" />
-                  <Line type="monotone" dataKey="returns" stroke="#ff8d9c" strokeWidth={2} dot={{ r: 4 }} name="Returns" yAxisId="right" />
-                </LineChart>
-              </ResponsiveContainer>
-            )}
-            {demoChartType === 'pie' && (
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={demoPieData}
-                    cx="50%"
-                    cy="45%"
-                    innerRadius={0}
-                    outerRadius={85}
-                    dataKey="value"
-                    nameKey="name"
-                    label={({ percent }) => (percent > 0.1 ? `${(percent * 100).toFixed(0)}%` : '')}
-                    labelLine={false}
-                  >
-                    {demoPieData.map((entry, i) => (
-                      <Cell key={`cell-${i}`} fill={entry.color} stroke="#121a2d" strokeWidth={2} />
-                    ))}
-                  </Pie>
-                  <Tooltip
-                    formatter={(value) => [`$${Number(value).toLocaleString()}`, 'Revenue']}
-                    contentStyle={{ background: '#121a2d', border: '1px solid #273552', borderRadius: '8px' }}
-                  />
-                  <Legend
-                    verticalAlign="bottom"
-                    align="center"
-                    iconType="circle"
-                    iconSize={8}
-                    formatter={(value) => {
-                      const item = demoPieData.find(d => d.name === value);
-                      const total = demoPieData.reduce((s, d) => s + d.value, 0);
-                      const pct = item ? Math.round((item.value / total) * 100) : 0;
-                      return (
-                        <span style={{ color: 'var(--text)', fontSize: '11px', marginRight: 8 }}>
-                          {value} ({pct}%)
-                        </span>
-                      );
-                    }}
-                  />
-                </PieChart>
-              </ResponsiveContainer>
-            )}
-            {demoChartType === 'area' && (
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={demoAreaData}>
-                  <defs>
-                    <linearGradient id="colorActual" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#65e6bf" stopOpacity={0.3}/>
-                      <stop offset="95%" stopColor="#65e6bf" stopOpacity={0}/>
-                    </linearGradient>
-                    <linearGradient id="colorForecast" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#8ea7ff" stopOpacity={0.3}/>
-                      <stop offset="95%" stopColor="#8ea7ff" stopOpacity={0}/>
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#273552" />
-                  <XAxis dataKey="week" stroke="#91a0bd" />
-                  <YAxis stroke="#91a0bd" tickFormatter={v => `$${v}k`} />
-                  <Tooltip contentStyle={{ background: '#121a2d', border: '1px solid #273552' }} />
-                  <Legend />
-                  <Area type="monotone" dataKey="actual" stroke="#65e6bf" fillOpacity={1} fill="url(#colorActual)" name="Actual" />
-                  <Area type="monotone" dataKey="forecast" stroke="#8ea7ff" fillOpacity={1} fill="url(#colorForecast)" name="Forecast" />
-                  <Line type="monotone" dataKey="target" stroke="#ffd166" strokeWidth={2} strokeDasharray="5 5" dot={false} name="Target" />
-                </AreaChart>
-              </ResponsiveContainer>
-            )}
-            {demoChartType === 'bar' && (
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={demoBarData} layout="vertical">
-                  <CartesianGrid strokeDasharray="3 3" stroke="#273552" vertical={false} />
-                  <XAxis type="number" stroke="#91a0bd" tickFormatter={v => `$${(v/1000).toFixed(0)}k`} />
-                  <YAxis type="category" dataKey="product" stroke="#91a0bd" width={100} />
-                  <Tooltip contentStyle={{ background: '#121a2d', border: '1px solid #273552' }} formatter={(value) => [`$${value.toLocaleString()}`, 'Revenue']} />
-                  <Bar dataKey="revenue" fill="#65e6bf" radius={[0, 4, 4, 0]} maxBarWidth={50} />
-                </BarChart>
-              </ResponsiveContainer>
-            )}
-          </div>
-        </article>
+      <section className="dashboard-next-steps" aria-label="Plan-aligned dashboard ideas">
+        <div><span className="next-icon"><ArrowDownRight size={17} /></span><div><strong>Keep decisions explainable</strong><p>Show the forecast, stock cover, and reason behind each reorder or markdown.</p></div></div>
+        <div><span className="next-icon"><Activity size={17} /></span><div><strong>Watch model health</strong><p>Bring drift status and forecast accuracy into the daily operating view.</p></div></div>
+        <div><span className="next-icon"><Boxes size={17} /></span><div><strong>Prioritize inventory risk</strong><p>Surface stockout risk and trapped capital beside the sales trend.</p></div></div>
       </section>
-
-      {/* Demo Charts Grid */}
-      <section className="demo-charts">
-        {/* Revenue by Division: Complete Solid Circle Pie Chart */}
-        <article className="card demo-chart">
-          <div className="chart-title">
-            <div>
-              <h3>Revenue by Division</h3>
-              <p style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>Total breakdown across catalog divisions</p>
-            </div>
-          </div>
-          <div style={{ height: 260 }}>
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={demoPieData}
-                  cx="50%"
-                  cy="45%"
-                  innerRadius={0}
-                  outerRadius={75}
-                  dataKey="value"
-                  nameKey="name"
-                  label={({ percent }) => (percent > 0.1 ? `${(percent * 100).toFixed(0)}%` : '')}
-                  labelLine={false}
-                >
-                  {demoPieData.map((e, i) => (
-                    <Cell key={i} fill={e.color} stroke="#121a2d" strokeWidth={2} />
-                  ))}
-                </Pie>
-                <Tooltip
-                  formatter={(v) => [`$${Number(v).toLocaleString()}`, 'Revenue']}
-                  contentStyle={{ background: '#121a2d', border: '1px solid #273552', borderRadius: '8px' }}
-                />
-                <Legend
-                  verticalAlign="bottom"
-                  align="center"
-                  iconType="circle"
-                  iconSize={8}
-                  formatter={(value) => {
-                    const item = demoPieData.find(d => d.name === value);
-                    const total = demoPieData.reduce((s, d) => s + d.value, 0);
-                    const pct = item ? Math.round((item.value / total) * 100) : 0;
-                    return (
-                      <span style={{ color: 'var(--text)', fontSize: '11px', marginRight: 8 }}>
-                        {value} ({pct}%)
-                      </span>
-                    );
-                  }}
-                />
-              </PieChart>
-            </ResponsiveContainer>
-          </div>
-        </article>
-
-        <article className="card demo-chart">
-          <div className="chart-title"><h3>Forecast vs Actual</h3></div>
-          <div style={{ height: 260 }}>
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={demoAreaData}>
-                <defs>
-                  <linearGradient id="colorA" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#65e6bf" stopOpacity={0.3}/><stop offset="95%" stopColor="#65e6bf" stopOpacity={0}/></linearGradient>
-                  <linearGradient id="colorF" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#8ea7ff" stopOpacity={0.3}/><stop offset="95%" stopColor="#8ea7ff" stopOpacity={0}/></linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="#273552" />
-                <XAxis dataKey="week" stroke="#91a0bd" />
-                <YAxis stroke="#91a0bd" tickFormatter={v => `$${v}k`} />
-                <Tooltip contentStyle={{ background: '#121a2d', border: '1px solid #273552' }} />
-                <Area type="monotone" dataKey="actual" stroke="#65e6bf" fill="url(#colorA)" name="Actual" />
-                <Area type="monotone" dataKey="forecast" stroke="#8ea7ff" fill="url(#colorF)" name="Forecast" />
-                <Line type="monotone" dataKey="target" stroke="#ffd166" strokeWidth={2} strokeDasharray="5 5" dot={false} name="Target" />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-        </article>
-
-        <article className="card demo-chart">
-          <div className="chart-title"><h3>Top Products by Revenue</h3></div>
-          <div style={{ height: 260 }}>
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={demoBarData} layout="vertical">
-                <CartesianGrid strokeDasharray="3 3" stroke="#273552" vertical={false} />
-                <XAxis type="number" stroke="#91a0bd" tickFormatter={v => `$${(v/1000).toFixed(0)}k`} />
-                <YAxis type="category" dataKey="product" stroke="#91a0bd" width={100} />
-                <Tooltip contentStyle={{ background: '#121a2d', border: '1px solid #273552' }} formatter={(v) => [`$${Number(v).toLocaleString()}`, 'Revenue']} />
-                <Bar dataKey="revenue" fill="#65e6bf" radius={[0, 4, 4, 0]} maxBarWidth={50} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </article>
-
-        <article className="card demo-chart">
-          <div className="chart-title"><h3>Monthly Trend</h3></div>
-          <div style={{ height: 260 }}>
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={demoLineData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#273552" />
-                <XAxis dataKey="month" stroke="#91a0bd" />
-                <YAxis stroke="#91a0bd" />
-                <Tooltip contentStyle={{ background: '#121a2d', border: '1px solid #273552' }} />
-                <Line type="monotone" dataKey="revenue" stroke="#65e6bf" strokeWidth={2} dot={{ r: 4 }} name="Revenue" />
-                <Line type="monotone" dataKey="orders" stroke="#8ea7ff" strokeWidth={2} dot={{ r: 4 }} name="Orders" />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-        </article>
-      </section>
+      {billingOpen && <BillingDialog onClose={() => setBillingOpen(false)} onCreated={loadDashboard} />}
     </div>
   );
 }
